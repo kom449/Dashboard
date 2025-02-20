@@ -1,0 +1,877 @@
+/* General Styling */
+body {
+    font-family: 'Arial', sans-serif;
+    padding: 20px;
+    background-color: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #444;
+}
+
+h2 {
+    margin-bottom: 10px;
+    color: #444;
+}
+
+.tab {
+    display: none;
+}
+
+.tab.active {
+    display: block;
+}
+
+/* Tabs Styling */
+#tabs ul {
+    list-style: none;
+    display: flex;
+    padding: 0;
+    margin: 0;
+    background-color: #343a40;
+}
+
+#tabs ul li {
+    margin: 0;
+}
+
+#tabs ul li a {
+    color: #ddd;
+    text-decoration: none;
+    font-size: 16px;
+    padding: 10px 20px;
+    display: inline-block;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+#tabs ul li a.active,
+#tabs ul li a:hover {
+    background-color: #007bff;
+    color: #fff;
+}
+
+#productTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: #fff;
+}
+
+#productTable th,
+#productTable td {
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+#productTable th {
+    background-color: #f4f4f9;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#productTable tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#productTable tr:hover {
+    background-color: #f1f1f1;
+}
+
+#filterButton {
+    padding: 10px 15px;
+    font-size: 14px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#filterButton:hover {
+    background-color: #0056b3;
+}
+
+/* Search Section */
+#customerSearchSection {
+    margin: 20px 0;
+    text-align: center;
+}
+
+#customerSearchForm {
+    display: inline-block;
+    text-align: center;
+    margin-top: 10px;
+}
+
+#searchQuery {
+    padding: 10px;
+    width: 300px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+#searchButton {
+    padding: 10px 20px;
+    font-size: 14px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#searchButton:hover {
+    background-color: #0056b3;
+}
+
+.logout-link {
+    display: block;
+    text-align: center;
+    margin-top: 20px;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.logout-link:hover {
+    text-decoration: underline;
+}
+
+/* Chart Section */
+.charts-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.chart-container {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 400px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-container h3 {
+    margin: 0;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.chart-container canvas {
+    flex: 1;
+    width: 100%;
+}
+
+#storeSelection {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+#storeSelection label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-right: 10px;
+}
+
+#dropdownSelection {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+#dropdownSelection label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-right: 10px;
+}
+
+#storeDropdown,
+#yearDropdown,
+#monthDropdown {
+    width: 200px;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#storeDropdown:hover,
+#yearDropdown:hover,
+#monthDropdown:hover {
+    border-color: #aaa;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+#storeDropdown:focus,
+#yearDropdown:focus,
+#monthDropdown:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Chart container */
+.chart-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Orders Tab */
+#customer-orders table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#customer-orders th,
+#customer-orders td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+#customer-orders th {
+    background-color: #f4f4f9;
+    font-weight: bold;
+}
+
+#customer-orders tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#customer-orders tr:hover {
+    background-color: #f1f1f1;
+}
+
+#customer-orders td.status {
+    text-transform: capitalize;
+    font-weight: bold;
+}
+
+/* Admin Tab Styling */
+#admin-tab {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#admin-content {
+    background-color: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 20px auto;
+    max-width: 600px;
+    text-align: center;
+}
+
+/* Form inside Admin Content */
+#admin-content form {
+    margin-top: 10px;
+}
+
+#admin-content form label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-align: left;
+    color: #555;
+}
+
+#admin-content form input[type="text"],
+#admin-content form input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+#admin-content form input[type="text"]:focus,
+#admin-content form input[type="password"]:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.25);
+}
+
+/* General button styling */
+button {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 8px 12px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+/* Toggle Admin Button */
+.toggle-admin-btn {
+    background-color: #007bff;
+    /* Blue */
+    color: white;
+}
+
+.toggle-admin-btn:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+/* Reset Password Button */
+.reset-password-btn {
+    background-color: #ffc107;
+    color: black;
+}
+
+.reset-password-btn:hover {
+    background-color: #e0a800;
+    transform: scale(1.05);
+}
+
+/* Delete User Button */
+.delete-user-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+.delete-user-btn:hover {
+    background-color: #b02a37;
+    transform: scale(1.05);
+}
+
+/* Table Styling for Better Layout */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th,
+td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: #f4f4f4;
+}
+
+td {
+    white-space: nowrap;
+}
+
+
+/* Button Styling */
+#admin-content form button {
+    display: inline-block;
+    width: 100%;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#admin-content form button:hover {
+    background-color: #0056b3;
+}
+
+/* Header in Admin Content */
+#admin-content h2 {
+    font-size: 1.5rem;
+    color: #444;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#user-list table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#user-list th,
+#user-list td {
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+#user-list th {
+    background-color: #f4f4f9;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#user-list tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+#user-list tr:hover {
+    background-color: #f1f1f1;
+}
+
+.reset-password-btn {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    color: #fff;
+    background-color: #dc3545;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.reset-password-btn:hover {
+    background-color: #c82333;
+}
+
+.delete-user-btn {
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    color: #fff;
+    background-color: #dc3545;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.delete-user-btn:hover {
+    background-color: #c82333;
+}
+
+/* Login Page Styling */
+#login-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    box-sizing: border-box;
+}
+
+#login-container h2 {
+    font-size: 1.5rem;
+    color: #444;
+    margin-bottom: 20px;
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+}
+
+#login-form input[type="text"],
+#login-form input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    color: #333;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+#login-form input[type="text"]:focus,
+#login-form input[type="password"]:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.25);
+}
+
+#login-button {
+    padding: 10px 15px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+#login-button:hover {
+    background-color: #0056b3;
+}
+
+/* Reset Password Form Styling */
+#resetPasswordForm {
+    max-width: 400px;
+    margin: 50px auto;
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+#resetPasswordForm h2 {
+    font-size: 1.5rem;
+    color: #444;
+    margin-bottom: 20px;
+}
+
+#resetPasswordForm label {
+    display: block;
+    font-size: 1rem;
+    color: #555;
+    text-align: left;
+    margin-bottom: 8px;
+}
+
+#resetPasswordForm input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+#resetPasswordForm button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#resetPasswordForm button:hover {
+    background-color: #0056b3;
+}
+
+/* Success and Error Messages */
+#resetPasswordForm .message {
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
+#resetPasswordForm .success {
+    color: #28a745;
+}
+
+#resetPasswordForm .error {
+    color: #dc3545;
+}
+
+/* Modal Styling */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.modal-content h3 {
+    margin-bottom: 15px;
+    color: #d9534f;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+}
+
+.modal-content button {
+    padding: 10px 15px;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.modal-content button:hover {
+    background-color: #0056b3;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/*Custom Tooltip*/
+.custom-tooltip {
+    background: #ffffff;
+    color: #333333;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+}
+
+.custom-tooltip .tooltip-header {
+    margin-bottom: 6px;
+    font-size: 16px;
+}
+
+.custom-tooltip .tooltip-section {
+    margin-bottom: 4px;
+}
+
+.custom-tooltip .tooltip-label {
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+.custom-tooltip .tooltip-current,
+.custom-tooltip .tooltip-previous,
+.custom-tooltip .tooltip-diff {
+    display: inline-block;
+    margin-right: 6px;
+}
+
+:root {
+    --bg-color: white;
+    --text-color: black;
+}
+
+.dark-mode {
+    --bg-color: #121212;
+    --text-color: #ffffff;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+button,
+select,
+input {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--text-color);
+}
+
+/* Custom Range Container */
+#customRangeContainer {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+/* Style each date container */
+.date-container {
+    display: flex;
+    flex-direction: column;
+    width: 48%; /* Adjust width to fit two in one row */
+}
+
+/* Label styling */
+.date-container label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+/* Style the date inputs */
+.date-container input[type="date"] {
+    padding: 5px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    color: #333;
+}
+
+/* Custom Legend */
+#customLegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+    justify-content: center;
+}
+
+.legend-item {
+    padding: 5px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    text-align: left;
+}
+
+.legend-color-box {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.legend-label {
+    font-weight: bold;
+    vertical-align: middle;
+}
+
+.legend-info {
+    font-size: 12px;
+    color: #555;
+    margin-top: 4px;
+    line-height: 1.3;
+}
+
+.legend-diff {
+    margin-left: 5px;
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    #login-container {
+        padding: 15px;
+    }
+
+    #login-button {
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+
+    #admin-content {
+        padding: 15px;
+        max-width: 100%;
+    }
+
+    #admin-content form button {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+
+    #admin-tab {
+        padding: 10px;
+    }
+
+    .admin-form {
+        padding: 15px;
+    }
+
+    .admin-form input[type="text"],
+    .admin-form input[type="password"] {
+        padding: 8px;
+        font-size: 0.9rem;
+    }
+
+    .admin-form button {
+        padding: 8px;
+    }
+
+    #resetPasswordForm {
+        padding: 15px;
+    }
+
+    #resetPasswordForm input[type="password"] {
+        padding: 8px;
+    }
+
+    #resetPasswordForm button {
+        padding: 8px;
+    }
+}
