@@ -147,35 +147,44 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
   let labels = [];
   let currentYearSales, currentYearMargin, previousYearSales, previousYearMargin;
   const now = new Date();
+  let limit; // number of days to include in the totals
 
   if (selectedMonth && selectedMonth !== "all") {
+    // Daily (specific month) branch
     data.sort((a, b) => parseInt(a.day) - parseInt(b.day));
     const monthNum = parseInt(selectedMonth);
+    // Get full number of days in the month for the selected year
     const daysInMonth = new Date(selectedYear, monthNum, 0).getDate();
     labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
     currentYearSales = Array(daysInMonth).fill(0);
     currentYearMargin = Array(daysInMonth).fill(0);
     previousYearSales = Array(daysInMonth).fill(0);
     previousYearMargin = Array(daysInMonth).fill(0);
+    
     data.forEach((item) => {
       const index = parseInt(item.day) - 1;
       if (parseInt(item.year) === parseInt(selectedYear)) {
-        currentYearSales[index] = parseFloat(item.total_sales);
-        currentYearMargin[index] = parseFloat(item.db_this_year || 0);
+        currentYearSales[index] += parseFloat(item.total_sales);
+        currentYearMargin[index] += parseFloat(item.db_this_year || 0);
       } else if (parseInt(item.year) === parseInt(selectedYear) - 1) {
-        previousYearSales[index] = parseFloat(item.total_sales);
-        previousYearMargin[index] = parseFloat(item.db_this_year || 0);
+        previousYearSales[index] += parseFloat(item.total_sales);
+        previousYearMargin[index] += parseFloat(item.db_this_year || 0);
       }
     });
+    
+    // If the selected month is the current month of the current year, truncate to today’s day.
     if (parseInt(selectedYear) === now.getFullYear() && parseInt(selectedMonth) === (now.getMonth() + 1)) {
-      const limit = now.getDate();
+      limit = now.getDate();
       labels = labels.slice(0, limit);
       currentYearSales = currentYearSales.slice(0, limit);
       currentYearMargin = currentYearMargin.slice(0, limit);
       previousYearSales = previousYearSales.slice(0, limit);
       previousYearMargin = previousYearMargin.slice(0, limit);
+    } else {
+      limit = labels.length;
     }
   } else {
+    // "All months" branch (unchanged)
     labels = Array.from({ length: 12 }, (_, i) =>
       new Date(0, i).toLocaleString("default", { month: "short" })
     );
@@ -194,7 +203,7 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
       }
     });
     if (parseInt(selectedYear) === now.getFullYear()) {
-      const currentMonthIndex = now.getMonth(); // 0-indexed (e.g., Feb = 1)
+      const currentMonthIndex = now.getMonth();
       const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const fraction = now.getDate() / daysInCurrentMonth;
       currentYearSales[currentMonthIndex] *= fraction;
@@ -206,12 +215,16 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
       currentYearMargin = currentYearMargin.slice(0, currentMonthIndex + 1);
       previousYearSales = previousYearSales.slice(0, currentMonthIndex + 1);
       previousYearMargin = previousYearMargin.slice(0, currentMonthIndex + 1);
+      limit = currentMonthIndex + 1;
+    } else {
+      limit = labels.length;
     }
   }
 
   const currentYearValue = parseInt(selectedYear);
   const previousYearValue = currentYearValue - 1;
 
+  // Build chart data and store the selectedMonth and limit for the legend
   const chartData = {
     labels: labels,
     datasets: [
@@ -235,7 +248,9 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
         contributionMargin: previousYearMargin,
         overlayColor: "rgba(255, 140, 0, 0.4)"
       }
-    ]
+    ],
+    selectedMonth: selectedMonth,
+    limit: limit
   };
 
   if (chartInstances["monthlyChart"]) {
@@ -290,8 +305,8 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
               }
               const salesColor = (salesDiff !== 'N/A' && salesDiff >= 0) ? "green" : "red";
               const marginColor = (marginDiff !== 'N/A' && marginDiff >= 0) ? "green" : "red";
-              html += `
-                <div class="tooltip-header"><strong>${label} ${datasetYear}</strong></div>
+              html += 
+                `<div class="tooltip-header"><strong>${label} ${datasetYear}</strong></div>
                 <div class="tooltip-section">
                   <span class="tooltip-label">Sales:</span>
                   <span class="tooltip-current">Current: ${currentSalesVal.toLocaleString()}</span>
@@ -303,11 +318,10 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
                   <span class="tooltip-current">Current: ${currentMarginVal.toLocaleString()}</span>
                   <span class="tooltip-previous">Previous: ${previousMarginVal.toLocaleString()}</span>
                   <span class="tooltip-diff" style="color: ${marginColor};">(${marginDiff}%)</span>
-                </div>
-              `;
+                </div>`;
             } else if (hoveredDatasetIndex === 1) {
-              html += `
-                <div class="tooltip-header"><strong>${label} ${datasetYear}</strong></div>
+              html += 
+                `<div class="tooltip-header"><strong>${label} ${datasetYear}</strong></div>
                 <div class="tooltip-section">
                   <span class="tooltip-label">Sales:</span>
                   <span class="tooltip-current">${previousSalesVal.toLocaleString()}</span>
@@ -315,8 +329,7 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
                 <div class="tooltip-section">
                   <span class="tooltip-label">Margin:</span>
                   <span class="tooltip-current">${previousMarginVal.toLocaleString()}</span>
-                </div>
-              `;
+                </div>`;
             }
             tooltipEl.innerHTML = html;
             const position = context.chart.canvas.getBoundingClientRect();
@@ -517,22 +530,17 @@ function generateCustomLegend(chart) {
   const legendContainer = document.getElementById("customLegend");
   if (!legendContainer) return;
   legendContainer.innerHTML = "";
-  const now = new Date();
-  const currentYearNow = now.getFullYear();
-  let limit = chart.data.labels.length;
-  if ((!chart.data.datasets[0].hasOwnProperty("customRange")) && chart.data.datasets[0].year === currentYearNow) {
-    if (chart.data.labels.length === 12) {
-      limit = now.getMonth() + 1;
-    } else if (chart.data.labels.length < 32) {
-      limit = now.getDate();
-    }
-  }
+  
+  // Use the precomputed limit from the chart data
+  const limit = chart.data.limit || chart.data.labels.length;
+  
   chart.data.datasets.forEach((dataset, datasetIndex) => {
     const dataSlice = dataset.data.slice(0, limit);
     const totalSales = dataSlice.reduce((a, b) => a + b, 0);
     const totalMargin = dataset.contributionMargin ? dataset.contributionMargin.slice(0, limit).reduce((a, b) => a + b, 0) : 0;
     let legendHTML = `<span class="legend-color-box" style="background-color: ${dataset.backgroundColor};"></span>
       <span class="legend-label">${dataset.label}</span>`;
+    
     if (datasetIndex === 0 && chart.data.datasets.length > 1) {
       const previousSales = chart.data.datasets[1].data.slice(0, limit).reduce((a, b) => a + b, 0);
       let salesDiff = 'N/A';
@@ -548,14 +556,12 @@ function generateCustomLegend(chart) {
       }
       const salesColor = (salesDiff !== 'N/A' && salesDiff >= 0) ? "green" : "red";
       const marginColor = (marginDiff !== 'N/A' && marginDiff >= 0) ? "green" : "red";
-      legendHTML += `
-      <div class="legend-info">
+      legendHTML += `<div class="legend-info">
         <span>Sales: ${totalSales.toLocaleString()} <span class="legend-diff" style="color: ${salesColor};">(${salesDiff}%)</span></span><br>
         <span>Margin: ${totalMargin.toLocaleString()} <span class="legend-diff" style="color: ${marginColor};">(${marginDiff}%)</span></span>
       </div>`;
     } else {
-      legendHTML += `
-      <div class="legend-info">
+      legendHTML += `<div class="legend-info">
         <span>Sales: ${totalSales.toLocaleString()}</span><br>
         <span>Margin: ${totalMargin.toLocaleString()}</span>
       </div>`;
@@ -566,6 +572,7 @@ function generateCustomLegend(chart) {
     legendContainer.appendChild(legendItem);
   });
 }
+
 
 // ====================
 // Yearly Chart Functions
