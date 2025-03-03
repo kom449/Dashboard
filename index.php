@@ -116,15 +116,43 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             <div id="product-table"></div>
         </div>
 
-        <!-- Customer Orders -->
+        <!-- Product Performance -->
         <div id="customer-orders" class="tab">
-            <h1>Product performance</h1>
-            <form id="orderSearchForm">
-                <input type="number" id="customerId" placeholder="Enter Product ID" required>
-                <button type="submit">Fetch Product</button>
-            </form>
-            <div id="order-details"></div>
+            <h1>Product Performance</h1>
+            <div class="performance-controls">
+                <form id="performanceSearchForm">
+                    <div id="storeSelection" class="selection-container">
+                        <div>
+                            <label for="storeSelect" class="storeLabel">Select Store:</label>
+                            <select id="storeSelect" class="storeDropdown">
+                                <option value="all">All Stores</option>
+                                <option value="excludeOnline">All Stores except online</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="performance-content">
+                <div class="pie-chart-container">
+                    <canvas id="storePerformanceChart"></canvas>
+                </div>
+                <div class="top-items-container">
+                    <h3>Top Sold Items</h3>
+                    <table id="topItemsTable">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Table rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
+
 
         <!-- Admin Tab -->
         <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
@@ -158,6 +186,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <script src="js/customers.js"></script>
     <script src="js/orders.js"></script>
     <script src="js/charts.js"></script>
+    <script src="js/product-performance.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var customRangeCheckbox = document.getElementById("customRange");

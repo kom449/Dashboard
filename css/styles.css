@@ -207,7 +207,8 @@ h2 {
 
 #storeDropdown,
 #yearDropdown,
-#monthDropdown {
+#monthDropdown,
+#storeSelect {
     width: 200px;
     padding: 8px 10px;
     font-size: 14px;
@@ -221,18 +222,21 @@ h2 {
 
 #storeDropdown:hover,
 #yearDropdown:hover,
-#monthDropdown:hover {
+#monthDropdown:hover,
+#storeSelect:hover {
     border-color: #aaa;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
 
 #storeDropdown:focus,
 #yearDropdown:focus,
-#monthDropdown:focus {
+#monthDropdown:focus,
+#storeSelect:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
+
 
 /* Chart container */
 .chart-container {
@@ -823,6 +827,43 @@ input {
     margin-left: 5px;
 }
 
+.performance-content {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    min-height: 582.267px; /* Set a minimum height as needed */
+  }
+  
+  .performance-content > .pie-chart-container,
+  .performance-content > .top-items-container {
+    flex: 1;
+    min-height: 582.267px; /* Ensure each container maintains a consistent height */
+    position: relative;
+  }
+  
+  
+  /* Force the canvas to fill the pie chart container */
+  .pie-chart-container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  
+  /* Optional: Style the table */
+  .top-items-container table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .top-items-container th,
+  .top-items-container td {
+    padding: 8px;
+    border: 1px solid #ccc;
+    text-align: left;
+  }
+  
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {

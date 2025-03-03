@@ -179,6 +179,96 @@ try {
         }
         echo json_encode($data);
         exit();
+    } elseif ($interval === 'store_performance') {
+        // New branch for store performance: aggregate total quantity sold per store,
+        // but only include sales that have a matching record in the items table.
+        $sql = "SELECT s.shop_id COLLATE utf8mb4_general_ci AS shop_id, 
+                       COALESCE(
+                         (SELECT shop_name FROM shops 
+                          WHERE shop_id COLLATE utf8mb4_general_ci = s.shop_id COLLATE utf8mb4_general_ci LIMIT 1),
+                         s.shop_id
+                       ) AS shop_name,
+                       SUM(s.quantity) AS total_quantity
+                FROM item_sales s
+                JOIN items i ON s.product_id COLLATE utf8mb4_general_ci = i.id COLLATE utf8mb4_general_ci
+                GROUP BY s.shop_id COLLATE utf8mb4_general_ci
+                ORDER BY total_quantity DESC";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed: " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+             $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
+    } elseif ($interval === 'top_items') {
+        // New branch for top sold items.
+        $storeCondition = "";
+        if (isset($_GET['store_id']) && $_GET['store_id'] !== 'all') {
+             $store_id = $_GET['store_id'];
+             $storeCondition = "WHERE s.shop_id = '$store_id' ";
+        }
+        $sql = "SELECT 
+                  COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
+                  i.title,
+                  SUM(s.quantity) AS total_quantity
+                FROM item_sales s
+                JOIN items i ON s.product_id COLLATE utf8mb4_general_ci = i.id COLLATE utf8mb4_general_ci
+                $storeCondition
+                GROUP BY product_group, i.title
+                ORDER BY total_quantity DESC
+                LIMIT 10";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed: " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+             $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
+    } elseif ($interval === 'product_performance') {
+        // Existing product performance branch.
+        $sql = "SELECT 
+                    COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
+                    i.title,
+                    SUM(s.quantity) AS total_quantity,
+                    AVG(i.sale_price) AS average_price
+                FROM item_sales s
+                JOIN items i ON s.product_id COLLATE utf8mb4_general_ci = i.id COLLATE utf8mb4_general_ci ";
+        
+        if ($storeId === 'excludeOnline') {
+            $sql .= "WHERE s.shop_id != $excludedShopId ";
+        } elseif ($storeId !== 'all') {
+            $storeId = intval($storeId);
+            $sql .= "WHERE s.shop_id = $storeId ";
+        }
+        
+        if (isset($_GET['product_id']) && !empty($_GET['product_id'])) {
+            $product_id = $_GET['product_id'];
+            if (strpos($sql, 'WHERE') !== false) {
+                $sql .= " AND (i.id COLLATE utf8mb4_general_ci = '$product_id' OR i.group_id COLLATE utf8mb4_general_ci = '$product_id') ";
+            } else {
+                $sql .= " WHERE (i.id COLLATE utf8mb4_general_ci = '$product_id' OR i.group_id COLLATE utf8mb4_general_ci = '$product_id') ";
+            }
+        }
+        
+        $sql .= "GROUP BY product_group, i.title
+                  ORDER BY total_quantity DESC";
+        
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed: " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
     } else {
         throw new Exception("Invalid interval specified.");
     }
