@@ -106,11 +106,9 @@ try {
         }
         
         if ($month && is_numeric($month)) {
-            // Group by complete date for daily aggregation
             $sql .= " GROUP BY YEAR(sd.date), MONTH(sd.date), DAY(sd.date)
                       ORDER BY YEAR(sd.date) ASC, DAY(sd.date) ASC";
         } else {
-            // Monthly grouping
             $sql .= " GROUP BY YEAR(sd.date), MONTH(sd.date)
                       ORDER BY YEAR(sd.date) ASC, MONTH(sd.date) ASC";
         }
@@ -180,8 +178,6 @@ try {
         echo json_encode($data);
         exit();
     } elseif ($interval === 'store_performance') {
-        // New branch for store performance: aggregate total quantity sold per store,
-        // but only include sales that have a matching record in the items table.
         $sql = "SELECT s.shop_id COLLATE utf8mb4_general_ci AS shop_id, 
                        COALESCE(
                          (SELECT shop_name FROM shops 
@@ -204,7 +200,6 @@ try {
         echo json_encode($data);
         exit();
     } elseif ($interval === 'top_items') {
-        // New branch for top sold items.
         $storeCondition = "";
         if (isset($_GET['store_id']) && $_GET['store_id'] !== 'all') {
              $store_id = $_GET['store_id'];
@@ -231,7 +226,6 @@ try {
         echo json_encode($data);
         exit();
     } elseif ($interval === 'product_performance') {
-        // Existing product performance branch.
         $sql = "SELECT 
                     COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
                     i.title,

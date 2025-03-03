@@ -1,37 +1,9 @@
-// Log when the script is loaded.
-console.log("product-performance.js loaded");
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Log whether the key elements exist.
-    var storeSelect = document.getElementById('storeSelect');
-    if (!storeSelect) {
-        console.error("Element with id 'storeSelect' not found!");
-    } else {
-        console.log("Element with id 'storeSelect' found:", storeSelect);
-    }
-    
-    var performanceForm = document.getElementById('performanceSearchForm');
-    if (!performanceForm) {
-        console.error("Element with id 'performanceSearchForm' not found!");
-    } else {
-        console.log("Element with id 'performanceSearchForm' found:", performanceForm);
-    }
-    
+    var storeSelect = document.getElementById('storeSelect');  
+    var performanceForm = document.getElementById('performanceSearchForm');   
     var storeChartCanvas = document.getElementById('storePerformanceChart');
-    if (!storeChartCanvas) {
-        console.error("Element with id 'storePerformanceChart' not found!");
-    } else {
-        console.log("Element with id 'storePerformanceChart' found:", storeChartCanvas);
-    }
-    
     var topItemsTableBody = document.querySelector('#topItemsTable tbody');
-    if (!topItemsTableBody) {
-        console.error("Table body for element with id 'topItemsTable' not found.");
-    } else {
-        console.log("Table body for 'topItemsTable' found:", topItemsTableBody);
-    }
 
-    // Proceed with the rest of your functions...
     function loadStoreOptions() {
         fetch('api.php?fetch_stores=1')
             .then(response => response.json())
@@ -39,22 +11,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 var storeSelect = document.getElementById('storeSelect');
                 if (!storeSelect) return;
                 storeSelect.innerHTML = '';
-                // Add a default "All Stores" option first
                 var defaultOption = document.createElement('option');
                 defaultOption.value = "all";
                 defaultOption.textContent = "All Stores";
                 defaultOption.selected = true;
                 storeSelect.appendChild(defaultOption);
-                // Append the remaining options, excluding the "excludeOnline" one
                 data.forEach(store => {
-                    // Skip if the API returned the "excludeOnline" option
                     if (store.shop_id === "excludeOnline") return;
                     var option = document.createElement('option');
                     option.value = store.shop_id;
                     option.textContent = store.shop_name;
                     storeSelect.appendChild(option);
                 });
-                console.log("Loaded store options:", data);
             })
             .catch(error => console.error('Error loading store options:', error));
     }
@@ -64,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('api.php?interval=store_performance')
             .then(response => response.json())
             .then(data => {
-                console.log("Store performance data:", data);
                 if (!storeChartCanvas) return;
                 var ctx = storeChartCanvas.getContext('2d');
                 var labels = data.map(item => item.shop_name);
@@ -122,7 +89,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(apiUrl)
             .then(response => response.json())
             .then(data => {
-                console.log("Top items data:", data);
                 var tbody = document.querySelector('#topItemsTable tbody');
                 if (!tbody) {
                     console.error("Table body for 'topItemsTable' not found.");
