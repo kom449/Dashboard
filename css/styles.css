@@ -208,7 +208,13 @@ h2 {
 #storeDropdown,
 #yearDropdown,
 #monthDropdown,
-#storeSelect {
+#storeSelect,
+#storeDropdownCatalog,
+#yearDropdownCatalog,
+#monthDropdownCatalog,
+#productSearch,
+#categoryDropdown,
+#brandDropdown {
     width: 200px;
     padding: 8px 10px;
     font-size: 14px;
@@ -223,7 +229,13 @@ h2 {
 #storeDropdown:hover,
 #yearDropdown:hover,
 #monthDropdown:hover,
-#storeSelect:hover {
+#storeSelect:hover,
+#storeDropdownCatalog:hover,
+#yearDropdownCatalog:hover,
+#monthDropdownCatalog:hover,
+#productSearch:hover,
+#categoryDropdown:hover,
+#brandDropdown:hover {
     border-color: #aaa;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
@@ -231,11 +243,18 @@ h2 {
 #storeDropdown:focus,
 #yearDropdown:focus,
 #monthDropdown:focus,
-#storeSelect:focus {
+#storeSelect:focus,
+#storeDropdownCatalog:focus,
+#yearDropdownCatalog:focus,
+#monthDropdownCatalog:focus,
+#productSearch:focus,
+#categoryDropdown:focus,
+#brandDropdown:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
+
 
 
 /* Chart container */
@@ -864,6 +883,87 @@ input {
     text-align: left;
   }
   
+  /* Controls Container for Filters */
+.catalog-controls {
+    margin-bottom: 20px;
+  }
+  
+  /* Filter Row Styling */
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  
+  .filter-row > div {
+    flex: 1;
+    margin-right: 10px;
+    min-width: 200px;
+  }
+  
+  .filter-row > div:last-child {
+    margin-right: 0;
+  }
+  
+  .filter-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  .filter-row input[type="text"],
+  .filter-row select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  /* Catalog Grid Layout */
+  .catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+  }
+  
+  /* Individual Catalog Item */
+  .catalog-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .catalog-item:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .catalog-item img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-right: 1px solid #ddd;
+  }
+  
+  .catalog-item-details {
+    padding: 10px;
+    flex: 1;
+  }
+  
+  .catalog-item-details h3 {
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #333;
+  }
+  
+  .catalog-item-details p {
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {

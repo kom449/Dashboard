@@ -15,50 +15,69 @@ header('Content-Type: application/json');
 $interval = $_GET['interval'] ?? '';
 $storeId = $_GET['store_id'] ?? 'all';
 $year = $_GET['year'] ?? date('Y');
-$month = $_GET['month'] ?? null;
+$month = $_GET['month'] ?? 'all';  // default to 'all' so comparisons work
 $excludedShopId = 4582108;
 
 if (isset($_GET['fetch_stores']) && $_GET['fetch_stores'] == 1) {
     $sql = "SELECT shop_id, shop_name FROM shops ORDER BY shop_name ASC";
     $result = $conn->query($sql);
-
     if (!$result) {
         echo json_encode(["error" => "Database query failed"]);
         exit();
     }
-
     $stores = [];
     while ($row = $result->fetch_assoc()) {
         $stores[] = $row;
     }
-
     array_unshift($stores, [
         "shop_id" => "excludeOnline",
         "shop_name" => "All Stores except Online"
     ]);
-
     echo json_encode($stores);
     exit();
 }
 
 try {
-    if ($interval === 'monthly_comparison') {
+    if ($interval === 'fetch_categories') {
+        $sql = "SELECT id, identifier, display_name FROM product_categories ORDER BY display_name ASC";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed (fetch_categories): " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
+    }
+    elseif ($interval === 'fetch_brands') {
+        $sql = "SELECT DISTINCT brand FROM items WHERE brand IS NOT NULL ORDER BY brand ASC";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed (fetch_brands): " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
+    }
+    elseif ($interval === 'monthly_comparison') {
         $selectedYear = (int)$year;
         $previousYear = $selectedYear - 1;
         
         if ($month && is_numeric($month)) {
             $selectedMonth = (int)$month;
-            // Build explicit date ranges for current year
             $startDateCurrent = sprintf("%d-%02d-01", $selectedYear, $selectedMonth);
             $daysInMonthCurrent = cal_days_in_month(CAL_GREGORIAN, $selectedMonth, $selectedYear);
-            // If the selected month is the current month in the current year, restrict to the current day
             if ($selectedYear === (int)date('Y') && $selectedMonth === (int)date('n')) {
                 $currentDay = (int)date('j');
                 $endDateCurrent = sprintf("%d-%02d-%02d", $selectedYear, $selectedMonth, $currentDay);
             } else {
                 $endDateCurrent = sprintf("%d-%02d-%02d", $selectedYear, $selectedMonth, $daysInMonthCurrent);
             }
-            // Build date ranges for previous year
             $startDatePrevious = sprintf("%d-%02d-01", $previousYear, $selectedMonth);
             $daysInMonthPrevious = cal_days_in_month(CAL_GREGORIAN, $selectedMonth, $previousYear);
             $endDatePrevious = sprintf("%d-%02d-%02d", $previousYear, $selectedMonth, $daysInMonthPrevious);
@@ -100,9 +119,9 @@ try {
         }
         
         if ($storeId === 'excludeOnline') {
-            $sql .= " AND sd.shop_id != '$excludedShopId'";
+            $sql .= " AND sd.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
         } elseif ($storeId !== 'all') {
-            $sql .= " AND sd.shop_id = '$storeId'";
+            $sql .= " AND sd.shop_id = '" . $conn->real_escape_string((string)$storeId) . "'";
         }
         
         if ($month && is_numeric($month)) {
@@ -115,7 +134,7 @@ try {
         
         $result = $conn->query($sql);
         if (!$result) {
-            throw new Exception("Database query failed: " . $conn->error);
+            throw new Exception("Database query failed (monthly_comparison): " . $conn->error);
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
@@ -130,15 +149,15 @@ try {
                     SUM(sd.db_this_year) AS db_this_year
                 FROM sales_data sd";
         if ($storeId === 'excludeOnline') {
-            $sql .= " WHERE sd.shop_id != '$excludedShopId'";
+            $sql .= " WHERE sd.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
         } elseif ($storeId !== 'all') {
-            $sql .= " WHERE sd.shop_id = '$storeId'";
+            $sql .= " WHERE sd.shop_id = '" . $conn->real_escape_string((string)$storeId) . "'";
         }
         $sql .= " GROUP BY YEAR(sd.date)
                   ORDER BY YEAR(sd.date) ASC";
         $result = $conn->query($sql);
         if (!$result) {
-            throw new Exception("Database query failed: " . $conn->error);
+            throw new Exception("Database query failed (yearly_summary): " . $conn->error);
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
@@ -161,15 +180,15 @@ try {
                 WHERE ((sd.date BETWEEN '$start' AND '$end')
                    OR (sd.date BETWEEN DATE_SUB('$start', INTERVAL 1 YEAR) AND DATE_SUB('$end', INTERVAL 1 YEAR)))";
         if ($storeId === 'excludeOnline') {
-            $sql .= " AND sd.shop_id != '$excludedShopId'";
+            $sql .= " AND sd.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
         } elseif ($storeId !== 'all') {
-            $sql .= " AND sd.shop_id = '$storeId'";
+            $sql .= " AND sd.shop_id = '" . $conn->real_escape_string((string)$storeId) . "'";
         }
         $sql .= " GROUP BY DATE(sd.date)
                   ORDER BY DATE(sd.date) ASC";
         $result = $conn->query($sql);
         if (!$result) {
-            throw new Exception("Database query failed: " . $conn->error);
+            throw new Exception("Database query failed (custom_range): " . $conn->error);
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
@@ -191,7 +210,7 @@ try {
                 ORDER BY total_quantity DESC";
         $result = $conn->query($sql);
         if (!$result) {
-            throw new Exception("Database query failed: " . $conn->error);
+            throw new Exception("Database query failed (store_performance): " . $conn->error);
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
@@ -203,7 +222,7 @@ try {
         $storeCondition = "";
         if (isset($_GET['store_id']) && $_GET['store_id'] !== 'all') {
              $store_id = $_GET['store_id'];
-             $storeCondition = "WHERE s.shop_id = '$store_id' ";
+             $storeCondition = "WHERE s.shop_id = '" . $conn->real_escape_string((string)$store_id) . "' ";
         }
         $sql = "SELECT 
                   COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
@@ -217,7 +236,7 @@ try {
                 LIMIT 10";
         $result = $conn->query($sql);
         if (!$result) {
-            throw new Exception("Database query failed: " . $conn->error);
+            throw new Exception("Database query failed (top_items): " . $conn->error);
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
@@ -235,14 +254,14 @@ try {
                 JOIN items i ON s.product_id COLLATE utf8mb4_general_ci = i.id COLLATE utf8mb4_general_ci ";
         
         if ($storeId === 'excludeOnline') {
-            $sql .= "WHERE s.shop_id != $excludedShopId ";
+            $sql .= "WHERE s.shop_id != " . $conn->real_escape_string((string)$excludedShopId) . " ";
         } elseif ($storeId !== 'all') {
             $storeId = intval($storeId);
             $sql .= "WHERE s.shop_id = $storeId ";
         }
         
         if (isset($_GET['product_id']) && !empty($_GET['product_id'])) {
-            $product_id = $_GET['product_id'];
+            $product_id = $conn->real_escape_string((string)$_GET['product_id']);
             if (strpos($sql, 'WHERE') !== false) {
                 $sql .= " AND (i.id COLLATE utf8mb4_general_ci = '$product_id' OR i.group_id COLLATE utf8mb4_general_ci = '$product_id') ";
             } else {
@@ -255,7 +274,63 @@ try {
         
         $result = $conn->query($sql);
         if (!$result) {
-            throw new Exception("Database query failed: " . $conn->error);
+            throw new Exception("Database query failed (product_performance): " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
+    } elseif ($interval === 'product_catalog') {
+        $search   = $_GET['search'] ?? '';
+        $category = $_GET['category'] ?? 'all';
+        $brand    = $_GET['brand'] ?? 'all';
+
+        $sql = "SELECT 
+                    i.id,
+                    i.title,
+                    i.image_link,
+                    i.brand,
+                    SUM(psi.amount) AS total_sales,
+                    COUNT(psi.id) AS count_sales
+                FROM items i
+                LEFT JOIN product_sales_items psi 
+                    ON (psi.product_identifier = i.id OR psi.product_identifier = i.group_id)
+                LEFT JOIN product_sales ps 
+                    ON psi.sale_id = ps.sale_id
+                WHERE 1=1";
+
+        if ($storeId === 'excludeOnline') {
+            $sql .= " AND ps.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
+        } elseif ($storeId !== 'all') {
+            $sql .= " AND ps.shop_id = '" . $conn->real_escape_string((string)$storeId) . "'";
+        }
+        if ($year) {
+            $sql .= " AND YEAR(ps.completed_at) = '" . $conn->real_escape_string((string)$year) . "'";
+        }
+        if ($month !== 'all') {
+            $sql .= " AND MONTH(ps.completed_at) = '" . $conn->real_escape_string((string)$month) . "'";
+        }
+        if (!empty($search)) {
+            $searchEscaped = $conn->real_escape_string((string)$search);
+            $sql .= " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%')";
+        }
+        if ($category !== 'all') {
+            $categoryEscaped = $conn->real_escape_string((string)$category);
+            $sql .= " AND psi.product_category_identifier = '$categoryEscaped'";
+        }
+        if ($brand !== 'all') {
+            $brandEscaped = $conn->real_escape_string((string)$brand);
+            $sql .= " AND i.brand = '$brandEscaped'";
+        }
+        
+        $sql .= " GROUP BY i.id, i.title, i.image_link, i.brand";
+        $sql .= " ORDER BY total_sales DESC";
+
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed (product_catalog): " . $conn->error);
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {

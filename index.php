@@ -1,4 +1,12 @@
 <?php
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',
+    'domain'   => 'dashboard.designcykler.dk.linux100.curanetserver.dk',
+    'secure'   => true,
+    'httponly' => true,
+    'samesite' => 'None'
+]);
 include 'cors.php';
 session_start();
 
@@ -27,7 +35,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         <ul>
             <li><a href="#main-page" class="active">Main Page</a></li>
             <li><a href="#all-products">All Products</a></li>
-            <li><a href="#customer-orders">Product Performance</a></li>
+            <li><a href="#product-catalog">Product Performance</a></li>
             <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
                 <li><a href="#admin-tab">Admin</a></li>
             <?php endif; ?>
@@ -116,43 +124,77 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             <div id="product-table"></div>
         </div>
 
-        <!-- Product Performance -->
-        <div id="customer-orders" class="tab">
+        <!-- Product Catalog -->
+        <div id="product-catalog" class="tab">
             <h1>Product Performance</h1>
-            <div class="performance-controls">
-                <form id="performanceSearchForm">
-                    <div id="storeSelection" class="selection-container">
-                        <div>
-                            <label for="storeSelect" class="storeLabel">Select Store:</label>
-                            <select id="storeSelect" class="storeDropdown">
-                                <option value="all">All Stores</option>
-                                <option value="excludeOnline">All Stores except online</option>
-                            </select>
-                        </div>
+            <div class="catalog-controls">
+                <!-- First Row: Store, Year, Month Dropdowns -->
+                <div class="filter-row">
+                    <div>
+                        <label for="storeDropdownCatalog">Select Store:</label>
+                        <select id="storeDropdownCatalog">
+                            <option value="all">All Stores</option>
+                            <option value="excludeOnline">All Stores except Online</option>
+                            <!-- Additional store options can be loaded dynamically -->
+                        </select>
                     </div>
-                </form>
+                    <div>
+                        <label for="yearDropdownCatalog">Select Year:</label>
+                        <select id="yearDropdownCatalog">
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="monthDropdownCatalog">Select Month:</label>
+                        <select id="monthDropdownCatalog">
+                            <option value="all">All Months</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Second Row: Search Bar, Category, and Brand Dropdowns -->
+                <div class="filter-row">
+                    <div>
+                        <label for="productSearch">Search Product:</label>
+                        <input type="text" id="productSearch" placeholder="Enter product ID or name">
+                    </div>
+                    <div>
+                        <label for="categoryDropdown">Category:</label>
+                        <select id="categoryDropdown">
+                            <option value="all">All Categories</option>
+                            <!-- Options can be loaded from the product_categories table -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="brandDropdown">Brand:</label>
+                        <select id="brandDropdown">
+                            <option value="all">All Brands</option>
+                            <!-- Options can be loaded dynamically (e.g., from the items table) -->
+                        </select>
+                    </div>
+                </div>
             </div>
-            <div class="performance-content">
-                <div class="pie-chart-container">
-                    <canvas id="storePerformanceChart"></canvas>
-                </div>
-                <div class="top-items-container">
-                    <h3>Top Sold Items</h3>
-                    <table id="topItemsTable">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Table rows will be injected here -->
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Catalog Grid -->
+            <div id="catalogGrid" class="catalog-grid">
+                <!-- The product catalog items will be inserted here via JavaScript -->
             </div>
         </div>
-
 
         <!-- Admin Tab -->
         <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
@@ -186,7 +228,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <script src="js/customers.js"></script>
     <script src="js/orders.js"></script>
     <script src="js/charts.js"></script>
-    <script src="js/product-performance.js"></script>
+    <script src="js/product_catalog.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var customRangeCheckbox = document.getElementById("customRange");

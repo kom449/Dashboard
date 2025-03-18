@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (target === "all-products") {
                     fetchAllProducts(); 
-                } else if (target === "customer-orders") {
+                } else if (target === "product-catalog") {
                     setupOrderSearch();
                 } else if (target === "admin-tab") {
                     setupAdminTab();
