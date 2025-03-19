@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 categoryDropdown.appendChild(defaultOption);
                 data.forEach(category => {
                     let option = document.createElement('option');
-                    option.value = category.identifier; // use identifier for filtering
+                    option.value = category.identifier;
                     option.textContent = category.display_name;
                     categoryDropdown.appendChild(option);
                 });
@@ -55,18 +55,12 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error fetching brands:', error));
     }
 
-    // New function to fetch and populate dynamic years
     function fetchYears() {
         fetch('api.php?interval=fetch_years')
             .then(response => response.json())
             .then(data => {
                 const yearDropdown = document.getElementById('yearDropdownCatalog');
                 yearDropdown.innerHTML = '';
-                // Optionally, add a default option here if desired:
-                // let defaultOption = document.createElement('option');
-                // defaultOption.value = 'all';
-                // defaultOption.textContent = 'All Years';
-                // yearDropdown.appendChild(defaultOption);
                 data.forEach(year => {
                     let option = document.createElement('option');
                     option.value = year;
@@ -111,10 +105,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    // Format number in Danish style (comma as decimal separator)
     function renderCatalog(data) {
         const catalogGrid = document.getElementById('catalogGrid');
-        catalogGrid.innerHTML = ''; // Clear existing items
+        catalogGrid.innerHTML = '';
     
         if (data.error) {
             catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
@@ -127,13 +120,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     
         data.forEach(item => {
-            // Create container for each catalog item
             const catalogItem = document.createElement('div');
             catalogItem.className = 'catalog-item';
-            // Set a data attribute for the product ID so we can load its details later
             catalogItem.setAttribute('data-product-id', item.id);
     
-            // Create image element with error handling
             const img = document.createElement('img');
             img.src = item.image_link ? item.image_link : 'img/placeholder.jpg';
             img.alt = item.title;
@@ -149,16 +139,13 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             catalogItem.appendChild(img);
     
-            // Create details container
             const details = document.createElement('div');
             details.className = 'catalog-item-details';
-    
-            // Product title
+
             const title = document.createElement('h3');
             title.textContent = item.title;
             details.appendChild(title);
     
-            // Total sales number (formatted in Danish style, in green, larger)
             const sales = document.createElement('p');
             const totalSales = Number(item.total_sales) || 0;
             sales.textContent = formatNumberDan(totalSales);
@@ -166,7 +153,6 @@ document.addEventListener('DOMContentLoaded', function () {
             sales.style.fontSize = '18px';
             details.appendChild(sales);
     
-            // Count (with increased font size)
             const count = document.createElement('p');
             const totalCount = Number(item.count_sales) || 0;
             count.textContent = 'Count: ' + totalCount;
@@ -176,7 +162,6 @@ document.addEventListener('DOMContentLoaded', function () {
             catalogItem.appendChild(details);
             catalogGrid.appendChild(catalogItem);
     
-            // Attach click event to load detail view using the global loadDetailView function
             catalogItem.addEventListener('click', function () {
                 const productId = this.getAttribute('data-product-id');
                 if (productId && typeof loadDetailView === 'function') {
@@ -186,7 +171,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // Danish number formatting helper
     function formatNumberDan(num) {
         return new Intl.NumberFormat('da-DK', {
             minimumFractionDigits: 2,
@@ -215,6 +199,6 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchStores();
     fetchCategories();
     fetchBrands();
-    fetchYears();  // New call for dynamic years
+    fetchYears();
     fetchCatalog();
 });
