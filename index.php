@@ -19,7 +19,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,7 +27,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
     <!-- Tabs Navigation -->
     <div id="tabs">
@@ -47,9 +45,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         <!-- Main Page -->
         <div id="main-page" class="tab active">
             <h1>Metrics</h1>
-            <!-- Charts -->
             <section id="charts" class="charts-grid">
-                <!-- Store, Date, and Interval Selection -->
                 <div id="storeSelection" class="selection-container">
                     <div>
                         <label for="storeDropdown">Select Store:</label>
@@ -101,16 +97,12 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                             <input type="date" id="endDate">
                         </div>
                     </div>
-
                 </div>
-                <!-- Custom Legend Container -->
                 <div id="customLegend"></div>
-                <!-- Monthly Comparison Chart Container -->
                 <div class="chart-container">
                     <h3>Monthly Comparison</h3>
                     <canvas id="monthlyChart"></canvas>
                 </div>
-                <!-- Yearly Summary Chart Container -->
                 <div class="chart-container">
                     <h3>Yearly Summary</h3>
                     <canvas id="yearlyChart"></canvas>
@@ -128,14 +120,12 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         <div id="product-catalog" class="tab">
             <h1>Product Performance</h1>
             <div class="catalog-controls">
-                <!-- First Row: Store, Year, Month Dropdowns -->
                 <div class="filter-row">
                     <div>
                         <label for="storeDropdownCatalog">Select Store:</label>
                         <select id="storeDropdownCatalog">
                             <option value="all">All Stores</option>
                             <option value="excludeOnline">All Stores except Online</option>
-                            <!-- Additional store options can be loaded dynamically -->
                         </select>
                     </div>
                     <div>
@@ -168,7 +158,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         </select>
                     </div>
                 </div>
-                <!-- Second Row: Search Bar, Category, and Brand Dropdowns -->
                 <div class="filter-row">
                     <div>
                         <label for="productSearch">Search Product:</label>
@@ -178,21 +167,57 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                         <label for="categoryDropdown">Category:</label>
                         <select id="categoryDropdown">
                             <option value="all">All Categories</option>
-                            <!-- Options can be loaded from the product_categories table -->
                         </select>
                     </div>
                     <div>
                         <label for="brandDropdown">Brand:</label>
                         <select id="brandDropdown">
                             <option value="all">All Brands</option>
-                            <!-- Options can be loaded dynamically (e.g., from the items table) -->
                         </select>
                     </div>
                 </div>
             </div>
-            <!-- Catalog Grid -->
             <div id="catalogGrid" class="catalog-grid">
-                <!-- The product catalog items will be inserted here via JavaScript -->
+                <!-- Catalog items will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Detailed View (hidden by default) -->
+        <div id="detailView" class="detail-view" style="display: none;">
+            <div class="detail-header">
+                <select id="detailYearDropdown"></select>
+                <select id="detailMonthDropdown">
+                    <option value="all">All Months</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+                <button id="backButton">Back</button>
+            </div>
+            <div class="detail-content">
+                <!-- Box 1: Item Info (name & image) -->
+                <div class="box" id="boxItemInfo"></div>
+                <!-- Box 2: Sales Summary (count & total sales) -->
+                <div class="box" id="boxSalesSummary"></div>
+                <!-- Box 3: Group Variations -->
+                <div class="box" id="boxItemGroup"></div>
+                <!-- Box 4: Shop Performance Chart -->
+                <div class="box" id="boxShopPerformance">
+                    <canvas id="shopPerformanceChart"></canvas>
+                </div>
+            </div>
+            <!-- Sales Trend Chart -->
+            <div class="detail-trend">
+                <canvas id="salesTrendChart"></canvas>
             </div>
         </div>
 
@@ -200,7 +225,6 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
             <div id="admin-tab" class="tab">
                 <h1>Admin Panel</h1>
-                <!-- Last Update Timestamp -->
                 <h3>Sales database</h3>
                 <h4 id="last-update-time">Fetching last update...</h4>
                 <div id="admin-content">
@@ -229,7 +253,10 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <script src="js/orders.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/product_catalog.js"></script>
+    <!-- Include the detailed view script separately -->
+    <script src="js/detail_view.js"></script>
     <script>
+        // Custom range toggle logic remains the same.
         document.addEventListener("DOMContentLoaded", function() {
             var customRangeCheckbox = document.getElementById("customRange");
             var customRangeContainer = document.getElementById("customRangeContainer");
@@ -266,5 +293,4 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         });
     </script>
 </body>
-
 </html>

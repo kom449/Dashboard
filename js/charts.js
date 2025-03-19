@@ -110,7 +110,7 @@ function fetchStoreList() {
         console.error("Unexpected store list response:", data);
         return;
       }
-      dropdown.innerHTML = '<option value="all">All Stores</option>';
+      dropdown.innerHTML = '';
       data.forEach((store) => {
         const option = document.createElement("option");
         option.value = store.shop_id;
@@ -122,6 +122,7 @@ function fetchStoreList() {
       console.error("Error fetching store list:", error);
     });
 }
+
 
 function fetchAndRenderMonthlyChart(storeId, selectedYear, selectedMonth) {
   const queryParams = new URLSearchParams({

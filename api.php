@@ -15,7 +15,7 @@ header('Content-Type: application/json');
 $interval = $_GET['interval'] ?? '';
 $storeId = $_GET['store_id'] ?? 'all';
 $year = $_GET['year'] ?? date('Y');
-$month = $_GET['month'] ?? 'all';  // default to 'all' so comparisons work
+$month = $_GET['month'] ?? 'all';
 $excludedShopId = 4582108;
 
 if (isset($_GET['fetch_stores']) && $_GET['fetch_stores'] == 1) {
@@ -29,16 +29,145 @@ if (isset($_GET['fetch_stores']) && $_GET['fetch_stores'] == 1) {
     while ($row = $result->fetch_assoc()) {
         $stores[] = $row;
     }
-    array_unshift($stores, [
-        "shop_id" => "excludeOnline",
-        "shop_name" => "All Stores except Online"
-    ]);
+    $filteredStores = array_filter($stores, function ($store) {
+        return $store['shop_id'] !== 'all';
+    });
+    $defaultStores = [
+        ["shop_id" => "all", "shop_name" => "All Stores"],
+        ["shop_id" => "excludeOnline", "shop_name" => "All Stores except Online"]
+    ];
+    $stores = array_merge($defaultStores, array_values($filteredStores));
     echo json_encode($stores);
     exit();
 }
 
 try {
-    if ($interval === 'fetch_categories') {
+    if ($interval === 'item_detail') {
+        $productId = $_GET['product_id'] ?? '';
+        if (!$productId) {
+            throw new Exception("Product ID not provided.");
+        }
+        $productIdEscaped = $conn->real_escape_string($productId);
+        $selectedYear = $conn->real_escape_string((string)$year);
+        $selectedMonth = ($month !== 'all') ? $conn->real_escape_string((string)$month) : null;
+        
+        $sqlItem = "SELECT id, title, image_link, brand, group_id 
+                    FROM items 
+                    WHERE (id COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                           OR group_id COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
+                    LIMIT 1";
+        $resultItem = $conn->query($sqlItem);
+        if (!$resultItem || $resultItem->num_rows === 0) {
+            throw new Exception("Item not found.");
+        }
+        $item = $resultItem->fetch_assoc();
+        
+        $identifier = !empty($item['group_id']) ? $conn->real_escape_string($item['group_id']) : $productIdEscaped;
+        $sqlSales = "SELECT 
+                        SUM(psi.amount) AS total_sales,
+                        COUNT(psi.id) AS count_sales
+                     FROM product_sales_items psi
+                     LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
+                     WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
+                            OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
+                       AND YEAR(ps.completed_at) = '$selectedYear'";
+        if ($selectedMonth) {
+            $sqlSales .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
+        }
+        $resultSales = $conn->query($sqlSales);
+        if (!$resultSales) {
+            throw new Exception("Sales query failed: " . $conn->error);
+        }
+        $sales = $resultSales->fetch_assoc();
+        
+        $groupItems = [];
+        if (!empty($item['group_id'])) {
+            $groupId = $conn->real_escape_string($item['group_id']);
+            $sqlGroup = "SELECT id, title, image_link 
+                         FROM items 
+                         WHERE group_id COLLATE utf8mb4_0900_ai_ci = CONVERT('$groupId' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci";
+            $resultGroup = $conn->query($sqlGroup);
+            if ($resultGroup) {
+                while ($row = $resultGroup->fetch_assoc()) {
+                    $groupItems[] = $row;
+                }
+            }
+        }
+        
+        $sqlShops = "SELECT ps.shop_id, 
+                            (SELECT shop_name FROM shops 
+                             WHERE shop_id COLLATE utf8mb4_0900_ai_ci = CONVERT(ps.shop_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci 
+                             LIMIT 1) AS shop_name,
+                            SUM(psi.amount) AS shop_sales
+                     FROM product_sales_items psi
+                     LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
+                     WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
+                            OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
+                       AND YEAR(ps.completed_at) = '$selectedYear'";
+        if ($selectedMonth) {
+            $sqlShops .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
+        }
+        $sqlShops .= " GROUP BY ps.shop_id ORDER BY shop_sales DESC";
+        $resultShops = $conn->query($sqlShops);
+        $shopPerformance = [];
+        if ($resultShops) {
+            while ($row = $resultShops->fetch_assoc()) {
+                $shopPerformance[] = $row;
+            }
+        }
+        
+        if ($selectedMonth) {
+            $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
+                         FROM product_sales ps
+                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
+                         WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
+                                OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
+                           AND YEAR(ps.completed_at) = '$selectedYear'
+                           AND MONTH(ps.completed_at) = '$selectedMonth'
+                         GROUP BY DAY(ps.completed_at)
+                         ORDER BY period ASC";
+        } else {
+            $sqlTrend = "SELECT MONTH(ps.completed_at) AS period, COUNT(*) AS count
+                         FROM product_sales ps
+                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
+                         WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
+                                OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
+                           AND YEAR(ps.completed_at) = '$selectedYear'
+                         GROUP BY MONTH(ps.completed_at)
+                         ORDER BY period ASC";
+        }
+        $resultTrend = $conn->query($sqlTrend);
+        $salesTrend = [];
+        if ($resultTrend) {
+            while ($row = $resultTrend->fetch_assoc()) {
+                $salesTrend[] = $row;
+            }
+        }
+        
+        $response = [
+            "item" => $item,
+            "sales" => $sales,
+            "group" => $groupItems,
+            "shopPerformance" => $shopPerformance,
+            "salesTrend" => $salesTrend
+        ];
+        echo json_encode($response);
+        exit();
+    }
+
+    elseif ($interval === 'fetch_years') {
+        $sql = "SELECT DISTINCT YEAR(completed_at) AS year FROM product_sales ORDER BY year DESC";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed (fetch_years): " . $conn->error);
+        }
+        $years = [];
+        while ($row = $result->fetch_assoc()) {
+            $years[] = $row['year'];
+        }
+        echo json_encode($years);
+        exit();
+    } elseif ($interval === 'fetch_categories') {
         $sql = "SELECT id, identifier, display_name FROM product_categories ORDER BY display_name ASC";
         $result = $conn->query($sql);
         if (!$result) {
@@ -50,8 +179,7 @@ try {
         }
         echo json_encode($data);
         exit();
-    }
-    elseif ($interval === 'fetch_brands') {
+    } elseif ($interval === 'fetch_brands') {
         $sql = "SELECT DISTINCT brand FROM items WHERE brand IS NOT NULL ORDER BY brand ASC";
         $result = $conn->query($sql);
         if (!$result) {
@@ -63,11 +191,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    }
-    elseif ($interval === 'monthly_comparison') {
+    } elseif ($interval === 'monthly_comparison') {
         $selectedYear = (int)$year;
         $previousYear = $selectedYear - 1;
-        
         if ($month && is_numeric($month)) {
             $selectedMonth = (int)$month;
             $startDateCurrent = sprintf("%d-%02d-01", $selectedYear, $selectedMonth);
@@ -81,7 +207,6 @@ try {
             $startDatePrevious = sprintf("%d-%02d-01", $previousYear, $selectedMonth);
             $daysInMonthPrevious = cal_days_in_month(CAL_GREGORIAN, $selectedMonth, $previousYear);
             $endDatePrevious = sprintf("%d-%02d-%02d", $previousYear, $selectedMonth, $daysInMonthPrevious);
-            
             $sql = "SELECT 
                         DAY(sd.date) AS day,
                         MONTH(sd.date) AS month, 
@@ -117,13 +242,11 @@ try {
                         WHERE YEAR(sd.date) IN ($selectedYear, $previousYear)";
             }
         }
-        
         if ($storeId === 'excludeOnline') {
             $sql .= " AND sd.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
         } elseif ($storeId !== 'all') {
             $sql .= " AND sd.shop_id = '" . $conn->real_escape_string((string)$storeId) . "'";
         }
-        
         if ($month && is_numeric($month)) {
             $sql .= " GROUP BY YEAR(sd.date), MONTH(sd.date), DAY(sd.date)
                       ORDER BY YEAR(sd.date) ASC, DAY(sd.date) ASC";
@@ -131,7 +254,6 @@ try {
             $sql .= " GROUP BY YEAR(sd.date), MONTH(sd.date)
                       ORDER BY YEAR(sd.date) ASC, MONTH(sd.date) ASC";
         }
-        
         $result = $conn->query($sql);
         if (!$result) {
             throw new Exception("Database query failed (monthly_comparison): " . $conn->error);
@@ -171,7 +293,6 @@ try {
         }
         $start = $_GET['start'];
         $end = $_GET['end'];
-        
         $sql = "SELECT 
                     DATE(sd.date) AS date,
                     SUM(sd.total_this_year) AS total_sales,
@@ -214,15 +335,15 @@ try {
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
-             $data[] = $row;
+            $data[] = $row;
         }
         echo json_encode($data);
         exit();
     } elseif ($interval === 'top_items') {
         $storeCondition = "";
         if (isset($_GET['store_id']) && $_GET['store_id'] !== 'all') {
-             $store_id = $_GET['store_id'];
-             $storeCondition = "WHERE s.shop_id = '" . $conn->real_escape_string((string)$store_id) . "' ";
+            $store_id = $_GET['store_id'];
+            $storeCondition = "WHERE s.shop_id = '" . $conn->real_escape_string((string)$store_id) . "' ";
         }
         $sql = "SELECT 
                   COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
@@ -240,7 +361,7 @@ try {
         }
         $data = [];
         while ($row = $result->fetch_assoc()) {
-             $data[] = $row;
+            $data[] = $row;
         }
         echo json_encode($data);
         exit();
@@ -252,26 +373,24 @@ try {
                     AVG(i.sale_price) AS average_price
                 FROM item_sales s
                 JOIN items i ON s.product_id COLLATE utf8mb4_general_ci = i.id COLLATE utf8mb4_general_ci ";
-        
         if ($storeId === 'excludeOnline') {
             $sql .= "WHERE s.shop_id != " . $conn->real_escape_string((string)$excludedShopId) . " ";
         } elseif ($storeId !== 'all') {
             $storeId = intval($storeId);
             $sql .= "WHERE s.shop_id = $storeId ";
         }
-        
         if (isset($_GET['product_id']) && !empty($_GET['product_id'])) {
             $product_id = $conn->real_escape_string((string)$_GET['product_id']);
             if (strpos($sql, 'WHERE') !== false) {
-                $sql .= " AND (i.id COLLATE utf8mb4_general_ci = '$product_id' OR i.group_id COLLATE utf8mb4_general_ci = '$product_id') ";
+                $sql .= " AND (i.id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci 
+                          OR i.group_id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci) ";
             } else {
-                $sql .= " WHERE (i.id COLLATE utf8mb4_general_ci = '$product_id' OR i.group_id COLLATE utf8mb4_general_ci = '$product_id') ";
+                $sql .= " WHERE (i.id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci 
+                          OR i.group_id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci) ";
             }
         }
-        
         $sql .= "GROUP BY product_group, i.title
                   ORDER BY total_quantity DESC";
-        
         $result = $conn->query($sql);
         if (!$result) {
             throw new Exception("Database query failed (product_performance): " . $conn->error);
@@ -286,7 +405,6 @@ try {
         $search   = $_GET['search'] ?? '';
         $category = $_GET['category'] ?? 'all';
         $brand    = $_GET['brand'] ?? 'all';
-
         $sql = "SELECT 
                     i.id,
                     i.title,
@@ -300,7 +418,6 @@ try {
                 LEFT JOIN product_sales ps 
                     ON psi.sale_id = ps.sale_id
                 WHERE 1=1";
-
         if ($storeId === 'excludeOnline') {
             $sql .= " AND ps.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
         } elseif ($storeId !== 'all') {
@@ -324,10 +441,8 @@ try {
             $brandEscaped = $conn->real_escape_string((string)$brand);
             $sql .= " AND i.brand = '$brandEscaped'";
         }
-        
         $sql .= " GROUP BY i.id, i.title, i.image_link, i.brand";
         $sql .= " ORDER BY total_sales DESC";
-
         $result = $conn->query($sql);
         if (!$result) {
             throw new Exception("Database query failed (product_catalog): " . $conn->error);

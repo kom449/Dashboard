@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 categoryDropdown.appendChild(defaultOption);
                 data.forEach(category => {
                     let option = document.createElement('option');
-                    option.value = category.identifier;
+                    option.value = category.identifier; // use identifier for filtering
                     option.textContent = category.display_name;
                     categoryDropdown.appendChild(option);
                 });
@@ -53,6 +53,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             })
             .catch(error => console.error('Error fetching brands:', error));
+    }
+
+    // New function to fetch and populate dynamic years
+    function fetchYears() {
+        fetch('api.php?interval=fetch_years')
+            .then(response => response.json())
+            .then(data => {
+                const yearDropdown = document.getElementById('yearDropdownCatalog');
+                yearDropdown.innerHTML = '';
+                // Optionally, add a default option here if desired:
+                // let defaultOption = document.createElement('option');
+                // defaultOption.value = 'all';
+                // defaultOption.textContent = 'All Years';
+                // yearDropdown.appendChild(defaultOption);
+                data.forEach(year => {
+                    let option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearDropdown.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching years:', error));
     }
 
     function fetchCatalog() {
@@ -89,63 +111,89 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
+    // Format number in Danish style (comma as decimal separator)
     function renderCatalog(data) {
         const catalogGrid = document.getElementById('catalogGrid');
-        catalogGrid.innerHTML = '';
-
+        catalogGrid.innerHTML = ''; // Clear existing items
+    
         if (data.error) {
             catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
             return;
         }
-
+    
         if (!data.length) {
             catalogGrid.innerHTML = '<p>No products found.</p>';
             return;
         }
-
+    
         data.forEach(item => {
+            // Create container for each catalog item
             const catalogItem = document.createElement('div');
             catalogItem.className = 'catalog-item';
-
+            // Set a data attribute for the product ID so we can load its details later
+            catalogItem.setAttribute('data-product-id', item.id);
+    
+            // Create image element with error handling
             const img = document.createElement('img');
             img.src = item.image_link ? item.image_link : 'img/placeholder.jpg';
             img.alt = item.title;
-
             img.onerror = function () {
                 this.onerror = null;
                 this.src = 'img/placeholder.jpg';
             };
-
             img.onload = function () {
                 if (this.naturalWidth === 0) {
                     this.onload = null;
                     this.src = 'img/placeholder.jpg';
                 }
             };
-
             catalogItem.appendChild(img);
-
+    
+            // Create details container
             const details = document.createElement('div');
             details.className = 'catalog-item-details';
-
+    
+            // Product title
             const title = document.createElement('h3');
             title.textContent = item.title;
             details.appendChild(title);
-
+    
+            // Total sales number (formatted in Danish style, in green, larger)
             const sales = document.createElement('p');
-            sales.textContent = 'Total Sales: DKK ' + (item.total_sales || '0');
+            const totalSales = Number(item.total_sales) || 0;
+            sales.textContent = formatNumberDan(totalSales);
+            sales.style.color = 'green';
+            sales.style.fontSize = '18px';
             details.appendChild(sales);
-
+    
+            // Count (with increased font size)
             const count = document.createElement('p');
-            count.textContent = 'Count: ' + (item.count_sales || '0');
+            const totalCount = Number(item.count_sales) || 0;
+            count.textContent = 'Count: ' + totalCount;
+            count.style.fontSize = '16px';
             details.appendChild(count);
-
+    
             catalogItem.appendChild(details);
             catalogGrid.appendChild(catalogItem);
+    
+            // Attach click event to load detail view using the global loadDetailView function
+            catalogItem.addEventListener('click', function () {
+                const productId = this.getAttribute('data-product-id');
+                if (productId && typeof loadDetailView === 'function') {
+                    loadDetailView(productId);
+                }
+            });
         });
     }
-
-
+    
+    // Danish number formatting helper
+    function formatNumberDan(num) {
+        return new Intl.NumberFormat('da-DK', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(num);
+    }
+    
     const filterIds = [
         'storeDropdownCatalog',
         'yearDropdownCatalog',
@@ -167,5 +215,6 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchStores();
     fetchCategories();
     fetchBrands();
+    fetchYears();  // New call for dynamic years
     fetchCatalog();
 });
