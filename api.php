@@ -8,6 +8,9 @@ if (!isset($_SESSION['user_id']) || !$_SESSION['logged_in']) {
 }
 
 require_once 'db.php';
+$conn->set_charset("utf8mb4");
+$conn->query("SET collation_connection = 'utf8mb4_0900_ai_ci'");
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 header('Content-Type: application/json');
@@ -18,6 +21,7 @@ $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? 'all';
 $excludedShopId = 4582108;
 
+// FETCH STORES
 if (isset($_GET['fetch_stores']) && $_GET['fetch_stores'] == 1) {
     $sql = "SELECT shop_id, shop_name FROM shops ORDER BY shop_name ASC";
     $result = $conn->query($sql);
@@ -42,6 +46,7 @@ if (isset($_GET['fetch_stores']) && $_GET['fetch_stores'] == 1) {
 }
 
 try {
+    // ----- Detailed View Branch: item_detail -----
     if ($interval === 'item_detail') {
         $productId = $_GET['product_id'] ?? '';
         if (!$productId) {
@@ -51,6 +56,7 @@ try {
         $selectedYear = $conn->real_escape_string((string)$year);
         $selectedMonth = ($month !== 'all') ? $conn->real_escape_string((string)$month) : null;
         
+        // 1. Retrieve basic item info
         $sqlItem = "SELECT id, title, image_link, brand, group_id 
                     FROM items 
                     WHERE (id COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
@@ -62,15 +68,20 @@ try {
         }
         $item = $resultItem->fetch_assoc();
         
+        // 2. Sales summary: count, total sales, and total cost. Also get unit price.
         $identifier = !empty($item['group_id']) ? $conn->real_escape_string($item['group_id']) : $productIdEscaped;
         $sqlSales = "SELECT 
+                        COUNT(psi.id) AS count_sales,
                         SUM(psi.amount) AS total_sales,
-                        COUNT(psi.id) AS count_sales
+                        MAX(psi.amount) AS unit_price,
+                        SUM(psi.cost_price) AS total_cost
                      FROM product_sales_items psi
                      LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
-                     WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
-                            OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
-                       AND YEAR(ps.completed_at) = '$selectedYear'";
+                     WHERE (
+                        psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                        OR psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                     )
+                     AND YEAR(ps.completed_at) = '$selectedYear'";
         if ($selectedMonth) {
             $sqlSales .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
         }
@@ -79,13 +90,33 @@ try {
             throw new Exception("Sales query failed: " . $conn->error);
         }
         $sales = $resultSales->fetch_assoc();
+        $unitPrice = isset($sales['unit_price']) ? floatval($sales['unit_price']) : 0;
+        $countSales = isset($sales['count_sales']) ? intval($sales['count_sales']) : 0;
+        $sales['expected_total'] = $countSales * $unitPrice; // if needed
         
+        // 3. Group Variations: count per variation as group_count
         $groupItems = [];
         if (!empty($item['group_id'])) {
             $groupId = $conn->real_escape_string($item['group_id']);
-            $sqlGroup = "SELECT id, title, image_link 
-                         FROM items 
-                         WHERE group_id COLLATE utf8mb4_0900_ai_ci = CONVERT('$groupId' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci";
+            $sqlGroup = "SELECT 
+                            i.id,
+                            i.title,
+                            i.image_link,
+                            COUNT(DISTINCT psi.id) AS group_count
+                         FROM items i
+                         LEFT JOIN product_sales_items psi 
+                           ON psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN (
+                                CONVERT(i.id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci,
+                                CONVERT(i.group_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                           )
+                         LEFT JOIN product_sales ps
+                           ON psi.sale_id = ps.sale_id
+                         WHERE i.group_id COLLATE utf8mb4_0900_ai_ci = CONVERT('$groupId' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                           AND YEAR(ps.completed_at) = '$selectedYear'";
+            if ($selectedMonth) {
+                $sqlGroup .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
+            }
+            $sqlGroup .= " GROUP BY i.id, i.title, i.image_link";
             $resultGroup = $conn->query($sqlGroup);
             if ($resultGroup) {
                 while ($row = $resultGroup->fetch_assoc()) {
@@ -94,16 +125,20 @@ try {
             }
         }
         
-        $sqlShops = "SELECT ps.shop_id, 
-                            (SELECT shop_name FROM shops 
-                             WHERE shop_id COLLATE utf8mb4_0900_ai_ci = CONVERT(ps.shop_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci 
-                             LIMIT 1) AS shop_name,
-                            SUM(psi.amount) AS shop_sales
+        // 4. Shop Performance: aggregate counts per store.
+        $sqlShops = "SELECT 
+                        ps.shop_id,
+                        (SELECT shop_name FROM shops 
+                         WHERE shop_id COLLATE utf8mb4_0900_ai_ci = CONVERT(ps.shop_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                         LIMIT 1) AS shop_name,
+                        COUNT(DISTINCT psi.id) AS shop_sales
                      FROM product_sales_items psi
                      LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
-                     WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
-                            OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
-                       AND YEAR(ps.completed_at) = '$selectedYear'";
+                     WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN (
+                           CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci,
+                           CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                     )
+                     AND YEAR(ps.completed_at) = '$selectedYear'";
         if ($selectedMonth) {
             $sqlShops .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
         }
@@ -112,27 +147,38 @@ try {
         $shopPerformance = [];
         if ($resultShops) {
             while ($row = $resultShops->fetch_assoc()) {
-                $shopPerformance[] = $row;
+                $shopId = $row['shop_id'];
+                if (isset($shopPerformance[$shopId])) {
+                    $shopPerformance[$shopId]['shop_sales'] += $row['shop_sales'];
+                } else {
+                    $shopPerformance[$shopId] = $row;
+                }
             }
+            $shopPerformance = array_values($shopPerformance);
         }
         
+        // 5. Sales Trend data
         if ($selectedMonth) {
             $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
                          FROM product_sales ps
                          LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
-                         WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
-                                OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
-                           AND YEAR(ps.completed_at) = '$selectedYear'
-                           AND MONTH(ps.completed_at) = '$selectedMonth'
+                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN (
+                                 CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci,
+                                 CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                         )
+                         AND YEAR(ps.completed_at) = '$selectedYear'
+                         AND MONTH(ps.completed_at) = '$selectedMonth'
                          GROUP BY DAY(ps.completed_at)
                          ORDER BY period ASC";
         } else {
             $sqlTrend = "SELECT MONTH(ps.completed_at) AS period, COUNT(*) AS count
                          FROM product_sales ps
                          LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
-                         WHERE ((psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
-                                OR (psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci))
-                           AND YEAR(ps.completed_at) = '$selectedYear'
+                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN (
+                                 CONVERT('$identifier' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci,
+                                 CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                         )
+                         AND YEAR(ps.completed_at) = '$selectedYear'
                          GROUP BY MONTH(ps.completed_at)
                          ORDER BY period ASC";
         }
@@ -154,7 +200,7 @@ try {
         echo json_encode($response);
         exit();
     }
-
+    // ==================== FETCH YEARS ====================
     elseif ($interval === 'fetch_years') {
         $sql = "SELECT DISTINCT YEAR(completed_at) AS year FROM product_sales ORDER BY year DESC";
         $result = $conn->query($sql);
@@ -167,7 +213,9 @@ try {
         }
         echo json_encode($years);
         exit();
-    } elseif ($interval === 'fetch_categories') {
+    }
+    // ==================== FETCH CATEGORIES ====================
+    elseif ($interval === 'fetch_categories') {
         $sql = "SELECT id, identifier, display_name FROM product_categories ORDER BY display_name ASC";
         $result = $conn->query($sql);
         if (!$result) {
@@ -179,7 +227,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'fetch_brands') {
+    }
+    // ==================== FETCH BRANDS ====================
+    elseif ($interval === 'fetch_brands') {
         $sql = "SELECT DISTINCT brand FROM items WHERE brand IS NOT NULL ORDER BY brand ASC";
         $result = $conn->query($sql);
         if (!$result) {
@@ -191,7 +241,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'monthly_comparison') {
+    }
+    // ==================== MONTHLY COMPARISON ====================
+    elseif ($interval === 'monthly_comparison') {
         $selectedYear = (int)$year;
         $previousYear = $selectedYear - 1;
         if ($month && is_numeric($month)) {
@@ -264,7 +316,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'yearly_summary') {
+    }
+    // ==================== YEARLY SUMMARY ====================
+    elseif ($interval === 'yearly_summary') {
         $sql = "SELECT 
                     YEAR(sd.date) AS year,
                     SUM(sd.total_this_year) AS total_sales,
@@ -287,7 +341,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'custom_range') {
+    }
+    // ==================== CUSTOM RANGE ====================
+    elseif ($interval === 'custom_range') {
         if (!isset($_GET['start']) || !isset($_GET['end'])) {
             throw new Exception("Custom range requires start and end dates.");
         }
@@ -317,7 +373,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'store_performance') {
+    }
+    // ==================== STORE PERFORMANCE ====================
+    elseif ($interval === 'store_performance') {
         $sql = "SELECT s.shop_id COLLATE utf8mb4_general_ci AS shop_id, 
                        COALESCE(
                          (SELECT shop_name FROM shops 
@@ -339,7 +397,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'top_items') {
+    }
+    // ==================== TOP ITEMS ====================
+    elseif ($interval === 'top_items') {
         $storeCondition = "";
         if (isset($_GET['store_id']) && $_GET['store_id'] !== 'all') {
             $store_id = $_GET['store_id'];
@@ -365,7 +425,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'product_performance') {
+    }
+    // ==================== PRODUCT PERFORMANCE ====================
+    elseif ($interval === 'product_performance') {
         $sql = "SELECT 
                     COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
                     i.title,
@@ -401,7 +463,9 @@ try {
         }
         echo json_encode($data);
         exit();
-    } elseif ($interval === 'product_catalog') {
+    }
+    // ==================== PRODUCT CATALOG ====================
+    elseif ($interval === 'product_catalog') {
         $search   = $_GET['search'] ?? '';
         $category = $_GET['category'] ?? 'all';
         $brand    = $_GET['brand'] ?? 'all';
@@ -411,7 +475,8 @@ try {
                     i.image_link,
                     i.brand,
                     SUM(psi.amount) AS total_sales,
-                    COUNT(psi.id) AS count_sales
+                    COUNT(psi.id) AS count_sales,
+                    SUM(psi.cost_price) AS total_cost
                 FROM items i
                 LEFT JOIN product_sales_items psi 
                     ON (psi.product_identifier = i.id OR psi.product_identifier = i.group_id)

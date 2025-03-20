@@ -108,22 +108,22 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderCatalog(data) {
         const catalogGrid = document.getElementById('catalogGrid');
         catalogGrid.innerHTML = '';
-    
+
         if (data.error) {
             catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
             return;
         }
-    
+
         if (!data.length) {
             catalogGrid.innerHTML = '<p>No products found.</p>';
             return;
         }
-    
+
         data.forEach(item => {
             const catalogItem = document.createElement('div');
             catalogItem.className = 'catalog-item';
             catalogItem.setAttribute('data-product-id', item.id);
-    
+
             const img = document.createElement('img');
             img.src = item.image_link ? item.image_link : 'img/placeholder.jpg';
             img.alt = item.title;
@@ -138,30 +138,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
             catalogItem.appendChild(img);
-    
+
             const details = document.createElement('div');
             details.className = 'catalog-item-details';
 
             const title = document.createElement('h3');
             title.textContent = item.title;
             details.appendChild(title);
-    
+
             const sales = document.createElement('p');
             const totalSales = Number(item.total_sales) || 0;
             sales.textContent = formatNumberDan(totalSales);
             sales.style.color = 'green';
             sales.style.fontSize = '18px';
             details.appendChild(sales);
-    
+
+            const cost = document.createElement('p');
+            const totalCost = Number(item.total_cost) || 0;
+            cost.textContent = "Cost: " + formatNumberDan(totalCost);
+            cost.style.color = 'red';
+            cost.style.fontSize = '14px';
+            details.appendChild(cost);
+
             const count = document.createElement('p');
             const totalCount = Number(item.count_sales) || 0;
             count.textContent = 'Count: ' + totalCount;
             count.style.fontSize = '16px';
             details.appendChild(count);
-    
+
             catalogItem.appendChild(details);
             catalogGrid.appendChild(catalogItem);
-    
+
             catalogItem.addEventListener('click', function () {
                 const productId = this.getAttribute('data-product-id');
                 if (productId && typeof loadDetailView === 'function') {
@@ -170,14 +177,14 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
-    
+
     function formatNumberDan(num) {
         return new Intl.NumberFormat('da-DK', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         }).format(num);
     }
-    
+
     const filterIds = [
         'storeDropdownCatalog',
         'yearDropdownCatalog',

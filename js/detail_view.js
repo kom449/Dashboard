@@ -57,23 +57,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 document.getElementById('boxSalesSummary').innerHTML =
                     `<p style="font-size:16px;">Count: ${data.sales.count_sales || 0}</p>
-                     <p style="font-size:18px; color:green;">
-                       ${formatNumberDan(data.sales.total_sales || 0)}
-                     </p>`;
+                     <p style="font-size:18px; color:green;">Sales: ${formatNumberDan(data.sales.total_sales || 0)}</p>
+                     <p style="font-size:14px; color:red;">Cost: ${formatNumberDan(data.sales.total_cost || 0)}</p>`;
 
                 if (data.group && data.group.length > 0) {
                     document.getElementById('boxItemGroup').innerHTML =
                         data.group.map(item => `
                             <div class="group-item">
                                 <span class="group-item-title">${item.title}</span>
-                                <span class="group-item-count">${item.count_sales ?? 0}</span>
+                                <span class="group-item-count">${item.group_count ?? 0}</span>
                             </div>
                         `).join('');
                 } else {
                     document.getElementById('boxItemGroup').innerHTML = `<p>No group variations</p>`;
                 }
+
                 renderShopPerformanceChart(data.shopPerformance);
                 renderSalesTrendChart(data.salesTrend);
+
                 document.getElementById('product-catalog').style.display = 'none';
                 detailView.style.display = 'block';
             })
@@ -88,19 +89,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderShopPerformanceChart(data) {
-        const ctx = document.getElementById('shopPerformanceChart').getContext('2d');
+        const aggregated = {};
+        data.forEach(d => {
+            const shopId = d.shop_id;
+            const shopName = (d.shop_name || '').trim();
+            const count = parseInt(d.shop_sales, 10) || 0;
+            if (!aggregated[shopId]) {
+                aggregated[shopId] = { shopId, shopName, count: 0 };
+            }
+            aggregated[shopId].count += count;
+        });
+        const aggregatedArray = Object.values(aggregated).sort((a, b) => b.count - a.count);
+        const labels = aggregatedArray.map(x => x.shopName);
+        const counts = aggregatedArray.map(x => x.count);
 
         if (shopPerformanceChart) {
             shopPerformanceChart.destroy();
         }
-
+        const ctx = document.getElementById('shopPerformanceChart').getContext('2d');
         shopPerformanceChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: data.map(d => d.shop_name),
+                labels: labels,
                 datasets: [{
                     label: 'Count',
-                    data: data.map(d => d.shop_sales),
+                    data: counts,
                     backgroundColor: 'rgba(75, 192, 192, 0.5)'
                 }]
             },
@@ -111,17 +124,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         beginAtZero: true,
-                        ticks: {
-                            autoSkip: true,
-                            maxTicksLimit: 6
-                        }
+                        ticks: { autoSkip: true, maxTicksLimit: 6 }
                     },
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            autoSkip: true,
-                            maxTicksLimit: 8
-                        }
+                        ticks: { autoSkip: false, font: { size: 11 } }
                     }
                 }
             }
@@ -129,12 +136,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderSalesTrendChart(data) {
-        const ctx = document.getElementById('salesTrendChart').getContext('2d');
-
         if (salesTrendChart) {
             salesTrendChart.destroy();
         }
-
+        const ctx = document.getElementById('salesTrendChart').getContext('2d');
         salesTrendChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -152,16 +157,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            autoSkip: true,
-                            maxTicksLimit: 6
-                        }
+                        ticks: { autoSkip: true, maxTicksLimit: 6 }
                     },
                     x: {
-                        ticks: {
-                            autoSkip: true,
-                            maxTicksLimit: 12
-                        }
+                        ticks: { autoSkip: true, maxTicksLimit: 12 }
                     }
                 }
             }
