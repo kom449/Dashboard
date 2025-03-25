@@ -2,9 +2,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentPage = 1;
     let loading = false;
     let allLoaded = false;
-    const pageSize = 50; // Adjust as needed
+    const pageSize = 50;
 
-    // Fetch filter data (stores, categories, brands, years)
     function fetchStores() {
         fetch('api.php?fetch_stores=1')
             .then(response => response.json())
@@ -77,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error fetching years:', error));
     }
 
-    // Attach event listeners for filter changes so the catalog resets.
     function attachFilterListeners() {
         const filterIds = [
             'storeDropdownCatalog',
@@ -105,7 +103,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Fetch catalog data with pagination.
     function fetchCatalog(page = 1) {
         if (loading || allLoaded) return;
         loading = true;
@@ -117,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const searchTerm = document.getElementById('productSearch').value.trim();
         const category = document.getElementById('categoryDropdown').value;
         const brand = document.getElementById('brandDropdown').value;
-        // Get sort order from dropdown (default "sales")
         const sortElement = document.getElementById('sortDropdown');
         let sort = 'sales';
         if (sortElement) {
@@ -145,7 +141,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 loading = false;
 
-                // Auto-load next page if content doesn't fill the container.
                 const catalogGrid = document.getElementById('catalogGrid');
                 if (!allLoaded && catalogGrid.scrollHeight <= catalogGrid.clientHeight) {
                     currentPage++;
@@ -159,11 +154,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    // Render catalog items.
     function renderCatalog(data, page) {
         const catalogGrid = document.getElementById('catalogGrid');
         if (page === 1) {
-            catalogGrid.innerHTML = ''; // Clear previous content.
+            catalogGrid.innerHTML = '';
         }
         if (data.error) {
             if (page === 1) catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
@@ -230,7 +224,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Append the new item before the sentinel if it exists.
             const sentinel = document.getElementById('sentinel');
             if (sentinel) {
                 catalogGrid.insertBefore(catalogItem, sentinel);
@@ -247,7 +240,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }).format(num);
     }
 
-    // Reset catalog state.
     function resetCatalog() {
         currentPage = 1;
         allLoaded = false;
@@ -299,11 +291,9 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             const targetId = this.getAttribute('href').substring(1);
 
-            // Hide all tabs.
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.style.display = 'none';
             });
-            // Show the selected tab.
             document.getElementById(targetId).style.display = 'block';
 
             if (targetId === 'product-catalog') {

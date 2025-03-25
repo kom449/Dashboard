@@ -55,7 +55,7 @@ try {
         $productIdEscaped = $conn->real_escape_string($productId);
         $selectedYear = $conn->real_escape_string((string)$year);
         $selectedMonth = ($month !== 'all') ? $conn->real_escape_string((string)$month) : null;
-        
+
         // 1. Retrieve basic item info
         $sqlItem = "SELECT id, title, image_link, brand, group_id 
                     FROM items 
@@ -67,23 +67,18 @@ try {
             throw new Exception("Item not found.");
         }
         $item = $resultItem->fetch_assoc();
-    
-        // Determine if this is a grouped product.
+
         $isGrouped = !empty($item['group_id']);
         if ($isGrouped) {
             $groupId = $conn->real_escape_string($item['group_id']);
         }
-    
-        // Build a subquery to get all identifiers for a grouped product.
-        // This subquery returns all item ids in the group plus the group id itself.
+
         $identifierSubquery = "(
             SELECT id FROM items WHERE group_id = '" . ($isGrouped ? $groupId : '') . "'
             UNION
             SELECT '" . ($isGrouped ? $groupId : $productIdEscaped) . "'
         )";
-    
-        // 2. Sales summary: count, total sales, and total cost. Also get unit price.
-        // If the product is grouped, aggregate sales for all items in the group.
+
         if ($isGrouped) {
             $sqlSales = "SELECT 
                             COUNT(psi.id) AS count_sales,
@@ -116,9 +111,7 @@ try {
         $unitPrice = isset($sales['unit_price']) ? floatval($sales['unit_price']) : 0;
         $countSales = isset($sales['count_sales']) ? intval($sales['count_sales']) : 0;
         $sales['expected_total'] = $countSales * $unitPrice;
-        
-        // 3. Group Variations: count per variation as group_count.
-        // (This remains unchanged, as it lists the individual variants in the group.)
+
         $groupItems = [];
         if ($isGrouped) {
             $sqlGroup = "SELECT 
@@ -147,8 +140,7 @@ try {
                 }
             }
         }
-        
-        // 4. Shop Performance: aggregate counts per store.
+
         if ($isGrouped) {
             $sqlShops = "SELECT 
                             ps.shop_id,
@@ -189,8 +181,7 @@ try {
             }
             $shopPerformance = array_values($shopPerformance);
         }
-        
-        // 5. Sales Trend data
+
         if ($selectedMonth) {
             if ($isGrouped) {
                 $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
@@ -237,7 +228,7 @@ try {
                 $salesTrend[] = $row;
             }
         }
-        
+
         $response = [
             "item" => $item,
             "sales" => $sales,
@@ -248,7 +239,7 @@ try {
         echo json_encode($response);
         exit();
     }
-    
+
     // ==================== FETCH YEARS ====================
     elseif ($interval === 'fetch_years') {
         $sql = "SELECT DISTINCT YEAR(completed_at) AS year FROM product_sales ORDER BY year DESC";
@@ -514,69 +505,69 @@ try {
         exit();
     }
     // ==================== PRODUCT CATALOG (with pagination) ====================
-elseif ($interval === 'product_catalog') {
-    // Enable debugging if debug=1 is passed as a parameter.
-    $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
+    elseif ($interval === 'product_catalog') {
+        // Enable debugging if debug=1 is passed as a parameter.
+        $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
 
-    // Retrieve and sanitize parameters.
-    $search   = $_GET['search'] ?? '';
-    $category = $_GET['category'] ?? 'all';
-    $brand    = $_GET['brand'] ?? 'all';
-    $storeId  = $_GET['store_id'] ?? 'all';
-    $year     = $_GET['year'] ?? '';
-    $month    = $_GET['month'] ?? 'all';
+        $search   = $_GET['search'] ?? '';
+        $category = $_GET['category'] ?? 'all';
+        $brand    = $_GET['brand'] ?? 'all';
+        $storeId  = $_GET['store_id'] ?? 'all';
+        $year     = $_GET['year'] ?? '';
+        $month    = $_GET['month'] ?? 'all';
 
-    // Pagination parameters.
-    $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
-    if ($page < 1) { $page = 1; }
-    if ($pageSize < 1) { $pageSize = 20; }
-    $offset   = ($page - 1) * $pageSize;
+        $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
+        if ($page < 1) {
+            $page = 1;
+        }
+        if ($pageSize < 1) {
+            $pageSize = 20;
+        }
+        $offset   = ($page - 1) * $pageSize;
 
-    // Escape values.
-    $searchEscaped   = $conn->real_escape_string($search);
-    $categoryEscaped = $conn->real_escape_string($category);
-    $brandEscaped    = $conn->real_escape_string($brand);
-    $yearEscaped     = $conn->real_escape_string($year);
-    $monthEscaped    = $conn->real_escape_string($month);
+        $searchEscaped   = $conn->real_escape_string($search);
+        $categoryEscaped = $conn->real_escape_string($category);
+        $brandEscaped    = $conn->real_escape_string($brand);
+        $yearEscaped     = $conn->real_escape_string($year);
+        $monthEscaped    = $conn->real_escape_string($month);
 
-    // Build filter conditions (applied in both branches)
-    $storeCondition = "";
-    if ($storeId === 'excludeOnline') {
-        $storeCondition = " AND (ps.shop_id != '" . $conn->real_escape_string($excludedShopId) . "' OR ps.shop_id IS NULL) ";
-    } elseif ($storeId !== 'all') {
-        $storeCondition = " AND (ps.shop_id = '" . $conn->real_escape_string($storeId) . "' OR ps.shop_id IS NULL) ";
-    }
+        $storeCondition = "";
+        if ($storeId === 'excludeOnline') {
+            $storeCondition = " AND (ps.shop_id != '" . $conn->real_escape_string($excludedShopId) . "' OR ps.shop_id IS NULL) ";
+        } elseif ($storeId !== 'all') {
+            $storeCondition = " AND (ps.shop_id = '" . $conn->real_escape_string($storeId) . "' OR ps.shop_id IS NULL) ";
+        }
 
-    $yearCondition = "";
-    if (!empty($year)) {
-        $yearCondition = " AND (YEAR(ps.completed_at) = '$yearEscaped' OR ps.completed_at IS NULL) ";
-    }
+        $yearCondition = "";
+        if (!empty($year)) {
+            $yearCondition = " AND (YEAR(ps.completed_at) = '$yearEscaped' OR ps.completed_at IS NULL) ";
+        }
 
-    $monthCondition = "";
-    if ($month !== 'all') {
-        $monthCondition = " AND (MONTH(ps.completed_at) = '$monthEscaped' OR ps.completed_at IS NULL) ";
-    }
+        $monthCondition = "";
+        if ($month !== 'all') {
+            $monthCondition = " AND (MONTH(ps.completed_at) = '$monthEscaped' OR ps.completed_at IS NULL) ";
+        }
 
-    $searchCondition = "";
-    if (!empty($search)) {
-        $searchCondition = " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%') ";
-    }
+        $searchCondition = "";
+        if (!empty($search)) {
+            $searchCondition = " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%') ";
+        }
 
-    $categoryCondition = "";
-    if ($category !== 'all') {
-        $categoryCondition = " AND (psi.product_category_identifier = '$categoryEscaped' OR psi.product_category_identifier IS NULL) ";
-    }
+        $categoryCondition = "";
+        if ($category !== 'all') {
+            $categoryCondition = " AND (psi.product_category_identifier = '$categoryEscaped' OR psi.product_category_identifier IS NULL) ";
+        }
 
-    $brandCondition = "";
-    if ($brand !== 'all') {
-        $brandCondition = " AND i.brand = '$brandEscaped' ";
-    }
+        $brandCondition = "";
+        if ($brand !== 'all') {
+            $brandCondition = " AND i.brand = '$brandEscaped' ";
+        }
 
-    /*
+        /*
       Branch 1: Standalone Items (items without a group_id)
     */
-    $standaloneSQL = "
+        $standaloneSQL = "
       SELECT 
           i.id AS id,
           i.image_link AS image_link,
@@ -600,12 +591,12 @@ elseif ($interval === 'product_catalog') {
       GROUP BY i.id
     ";
 
-    /*
+        /*
       Branch 2: Grouped Items (items with a group_id)
       For grouped items, we want the aggregated sales from both the group join and the individual join.
       We also pick a representative record for the group.
     */
-    $groupedDerived = "
+        $groupedDerived = "
       SELECT product_group, SUM(total_sales) AS total_sales, SUM(count_sales) AS count_sales, SUM(total_cost) AS total_cost
       FROM (
           SELECT 
@@ -649,8 +640,7 @@ elseif ($interval === 'product_catalog') {
       GROUP BY product_group
     ";
 
-    // For the representative info, we select the record with the minimum id per group.
-    $repSQL = "
+        $repSQL = "
       SELECT 
           group_id,
           MIN(id) AS rep_id,
@@ -662,8 +652,7 @@ elseif ($interval === 'product_catalog') {
       GROUP BY group_id
     ";
 
-    // Now join the aggregated grouped sales with the representative info.
-    $groupedSQL = "
+        $groupedSQL = "
       SELECT 
           grp.product_group AS id,
           rep.image_link AS image_link,
@@ -680,8 +669,7 @@ elseif ($interval === 'product_catalog') {
       ) rep ON rep.group_id = grp.product_group
     ";
 
-    // Combine both branches using UNION ALL and order by count_sales.
-    $sql = "
+        $sql = "
       ($standaloneSQL)
       UNION ALL
       ($groupedSQL)
@@ -689,34 +677,34 @@ elseif ($interval === 'product_catalog') {
       LIMIT $pageSize OFFSET $offset
     ";
 
-    if ($debug) {
-        error_log("DEBUG - Product Catalog UNION SQL Query: " . $sql);
-    }
-
-    $result = $conn->query($sql);
-    if (!$result) {
-        $errorMsg = "Database query failed (product_catalog): " . $conn->error;
         if ($debug) {
-            error_log("DEBUG - SQL Error: " . $conn->error);
-            header('Content-Type: application/json');
-            echo json_encode([
-                "error"     => "SQL Error",
-                "sql_error" => $conn->error,
-                "sql_query" => $sql
-            ]);
-            exit();
+            error_log("DEBUG - Product Catalog UNION SQL Query: " . $sql);
         }
-        throw new Exception($errorMsg);
-    }
 
-    $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
+        $result = $conn->query($sql);
+        if (!$result) {
+            $errorMsg = "Database query failed (product_catalog): " . $conn->error;
+            if ($debug) {
+                error_log("DEBUG - SQL Error: " . $conn->error);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    "error"     => "SQL Error",
+                    "sql_error" => $conn->error,
+                    "sql_query" => $sql
+                ]);
+                exit();
+            }
+            throw new Exception($errorMsg);
+        }
+
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit();
     }
-    header('Content-Type: application/json');
-    echo json_encode($data);
-    exit();
-}
 
     // ==================== PRODUCT PERFORMANCE ====================
     elseif ($interval === 'product_performance') {
@@ -755,8 +743,7 @@ elseif ($interval === 'product_catalog') {
         }
         echo json_encode($data);
         exit();
-    }
-    else {
+    } else {
         throw new Exception("Invalid interval specified.");
     }
 } catch (Exception $e) {
@@ -765,4 +752,3 @@ elseif ($interval === 'product_catalog') {
     error_log("API Error: " . $e->getMessage(), 0);
     exit();
 }
-?>
