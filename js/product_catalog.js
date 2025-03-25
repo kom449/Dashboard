@@ -77,6 +77,34 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error fetching years:', error));
     }
 
+    // Attach event listeners for filter changes so the catalog resets.
+    function attachFilterListeners() {
+        const filterIds = [
+            'storeDropdownCatalog',
+            'yearDropdownCatalog',
+            'monthDropdownCatalog',
+            'productSearch',
+            'categoryDropdown',
+            'brandDropdown',
+            'sortDropdown'
+        ];
+        filterIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('change', function () {
+                    resetCatalog();
+                    fetchCatalog(currentPage);
+                });
+                if (id === 'productSearch') {
+                    element.addEventListener('keyup', function () {
+                        resetCatalog();
+                        fetchCatalog(currentPage);
+                    });
+                }
+            }
+        });
+    }
+
     // Fetch catalog data with pagination.
     function fetchCatalog(page = 1) {
         if (loading || allLoaded) return;
@@ -89,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const searchTerm = document.getElementById('productSearch').value.trim();
         const category = document.getElementById('categoryDropdown').value;
         const brand = document.getElementById('brandDropdown').value;
-        // New: get sort order from dropdown (default "sales")
+        // Get sort order from dropdown (default "sales")
         const sortElement = document.getElementById('sortDropdown');
         let sort = 'sales';
         if (sortElement) {
@@ -296,4 +324,6 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchCategories();
     fetchBrands();
     fetchYears();
+    // Attach filter event listeners.
+    attachFilterListeners();
 });

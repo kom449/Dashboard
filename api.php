@@ -515,7 +515,8 @@ try {
             $sql .= " AND i.brand = '$brandEscaped'";
         }
         $sql .= " GROUP BY i.id, i.title, i.image_link, i.brand";
-        $sql .= " ORDER BY total_sales DESC";
+        // UPDATED: Order by count_sales (i.e. product count) descending.
+        $sql .= " ORDER BY count_sales DESC";
         // Apply pagination with LIMIT and OFFSET
         $sql .= " LIMIT " . $pageSize . " OFFSET " . $offset;
 
@@ -529,7 +530,46 @@ try {
         }
         echo json_encode($data);
         exit();
-    } else {
+    }
+    // ==================== PRODUCT PERFORMANCE ====================
+    elseif ($interval === 'product_performance') {
+        $sql = "SELECT 
+                    COALESCE(i.group_id COLLATE utf8mb4_general_ci, i.id COLLATE utf8mb4_general_ci) AS product_group,
+                    i.title,
+                    SUM(s.quantity) AS total_quantity,
+                    AVG(i.sale_price) AS average_price
+                FROM item_sales s
+                JOIN items i ON s.product_id COLLATE utf8mb4_general_ci = i.id COLLATE utf8mb4_general_ci ";
+        if ($storeId === 'excludeOnline') {
+            $sql .= "WHERE s.shop_id != " . $conn->real_escape_string((string)$excludedShopId) . " ";
+        } elseif ($storeId !== 'all') {
+            $storeId = intval($storeId);
+            $sql .= "WHERE s.shop_id = $storeId ";
+        }
+        if (isset($_GET['product_id']) && !empty($_GET['product_id'])) {
+            $product_id = $conn->real_escape_string((string)$_GET['product_id']);
+            if (strpos($sql, 'WHERE') !== false) {
+                $sql .= " AND (i.id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci 
+                          OR i.group_id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci) ";
+            } else {
+                $sql .= " WHERE (i.id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci 
+                          OR i.group_id COLLATE utf8mb4_general_ci = CONVERT('$product_id' USING utf8mb4) COLLATE utf8mb4_general_ci) ";
+            }
+        }
+        $sql .= "GROUP BY product_group, i.title
+                  ORDER BY total_quantity DESC";
+        $result = $conn->query($sql);
+        if (!$result) {
+            throw new Exception("Database query failed (product_performance): " . $conn->error);
+        }
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        echo json_encode($data);
+        exit();
+    }
+    else {
         throw new Exception("Invalid interval specified.");
     }
 } catch (Exception $e) {
