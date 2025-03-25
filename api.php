@@ -92,7 +92,7 @@ try {
         $sales = $resultSales->fetch_assoc();
         $unitPrice = isset($sales['unit_price']) ? floatval($sales['unit_price']) : 0;
         $countSales = isset($sales['count_sales']) ? intval($sales['count_sales']) : 0;
-        $sales['expected_total'] = $countSales * $unitPrice; // if needed
+        $sales['expected_total'] = $countSales * $unitPrice;
         
         // 3. Group Variations: count per variation as group_count
         $groupItems = [];
@@ -464,11 +464,19 @@ try {
         echo json_encode($data);
         exit();
     }
-    // ==================== PRODUCT CATALOG ====================
+    // ==================== PRODUCT CATALOG (with pagination) ====================
     elseif ($interval === 'product_catalog') {
         $search   = $_GET['search'] ?? '';
         $category = $_GET['category'] ?? 'all';
         $brand    = $_GET['brand'] ?? 'all';
+
+        // Pagination parameters: default to page 1 and pageSize of 20 if not provided
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
+        if ($page < 1) { $page = 1; }
+        if ($pageSize < 1) { $pageSize = 20; }
+        $offset = ($page - 1) * $pageSize;
+
         $sql = "SELECT 
                     i.id,
                     i.title,
@@ -508,6 +516,9 @@ try {
         }
         $sql .= " GROUP BY i.id, i.title, i.image_link, i.brand";
         $sql .= " ORDER BY total_sales DESC";
+        // Apply pagination with LIMIT and OFFSET
+        $sql .= " LIMIT " . $pageSize . " OFFSET " . $offset;
+
         $result = $conn->query($sql);
         if (!$result) {
             throw new Exception("Database query failed (product_catalog): " . $conn->error);

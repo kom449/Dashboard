@@ -930,8 +930,17 @@ input {
     gap: 15px;
 }
 
+#catalogGrid {
+    height: 600px;      /* fixed height to force scrolling */
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;        /* spacing between items */
+  }
+  
 /* Individual Catalog Item */
 .catalog-item {
+    width: 400px; 
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;

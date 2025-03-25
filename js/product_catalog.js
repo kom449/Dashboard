@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
+    let currentPage = 1;
+    let loading = false;
+    let allLoaded = false;
+    const pageSize = 50; // Adjust as needed
+
+    // Fetch filter data (stores, categories, brands, years)
     function fetchStores() {
         fetch('api.php?fetch_stores=1')
             .then(response => response.json())
@@ -71,50 +77,71 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(error => console.error('Error fetching years:', error));
     }
 
-    function fetchCatalog() {
+    // Fetch catalog data with pagination.
+    function fetchCatalog(page = 1) {
+        if (loading || allLoaded) return;
+        loading = true;
+        console.log('Fetching catalog page:', page);
+
         const store = document.getElementById('storeDropdownCatalog').value;
         const year = document.getElementById('yearDropdownCatalog').value;
         const month = document.getElementById('monthDropdownCatalog').value;
         const searchTerm = document.getElementById('productSearch').value.trim();
         const category = document.getElementById('categoryDropdown').value;
         const brand = document.getElementById('brandDropdown').value;
+        // New: get sort order from dropdown (default "sales")
+        const sortElement = document.getElementById('sortDropdown');
+        let sort = 'sales';
+        if (sortElement) {
+            sort = sortElement.value;
+        }
 
         let params = new URLSearchParams();
         params.append('interval', 'product_catalog');
         params.append('store_id', store);
         params.append('year', year);
-        if (month !== 'all') {
-            params.append('month', month);
-        }
-        if (searchTerm !== '') {
-            params.append('search', searchTerm);
-        }
-        if (category !== 'all') {
-            params.append('category', category);
-        }
-        if (brand !== 'all') {
-            params.append('brand', brand);
-        }
+        if (month !== 'all') params.append('month', month);
+        if (searchTerm !== '') params.append('search', searchTerm);
+        if (category !== 'all') params.append('category', category);
+        if (brand !== 'all') params.append('brand', brand);
+        params.append('page', page);
+        params.append('page_size', pageSize);
+        params.append('sort', sort);
 
         fetch('api.php?' + params.toString())
             .then(response => response.json())
-            .then(data => renderCatalog(data))
+            .then(data => {
+                renderCatalog(data, page);
+                if (data.length < pageSize) {
+                    allLoaded = true;
+                }
+                loading = false;
+
+                // Auto-load next page if content doesn't fill the container.
+                const catalogGrid = document.getElementById('catalogGrid');
+                if (!allLoaded && catalogGrid.scrollHeight <= catalogGrid.clientHeight) {
+                    currentPage++;
+                    fetchCatalog(currentPage);
+                }
+            })
             .catch(error => {
                 console.error('Error fetching catalog:', error);
                 document.getElementById('catalogGrid').innerHTML = '<p>Error fetching data.</p>';
+                loading = false;
             });
     }
 
-    function renderCatalog(data) {
+    // Render catalog items.
+    function renderCatalog(data, page) {
         const catalogGrid = document.getElementById('catalogGrid');
-        catalogGrid.innerHTML = '';
-
+        if (page === 1) {
+            catalogGrid.innerHTML = ''; // Clear previous content.
+        }
         if (data.error) {
-            catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
+            if (page === 1) catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
             return;
         }
-
-        if (!data.length) {
+        if (!data.length && page === 1) {
             catalogGrid.innerHTML = '<p>No products found.</p>';
             return;
         }
@@ -167,7 +194,6 @@ document.addEventListener('DOMContentLoaded', function () {
             details.appendChild(count);
 
             catalogItem.appendChild(details);
-            catalogGrid.appendChild(catalogItem);
 
             catalogItem.addEventListener('click', function () {
                 const productId = this.getAttribute('data-product-id');
@@ -175,6 +201,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     loadDetailView(productId);
                 }
             });
+
+            // Append the new item before the sentinel if it exists.
+            const sentinel = document.getElementById('sentinel');
+            if (sentinel) {
+                catalogGrid.insertBefore(catalogItem, sentinel);
+            } else {
+                catalogGrid.appendChild(catalogItem);
+            }
         });
     }
 
@@ -185,27 +219,81 @@ document.addEventListener('DOMContentLoaded', function () {
         }).format(num);
     }
 
-    const filterIds = [
-        'storeDropdownCatalog',
-        'yearDropdownCatalog',
-        'monthDropdownCatalog',
-        'productSearch',
-        'categoryDropdown',
-        'brandDropdown'
-    ];
-    filterIds.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.addEventListener('change', fetchCatalog);
-            if (id === 'productSearch') {
-                element.addEventListener('keyup', fetchCatalog);
-            }
+    // Reset catalog state.
+    function resetCatalog() {
+        currentPage = 1;
+        allLoaded = false;
+        loading = false;
+    }
+
+    // ----- IntersectionObserver Setup -----
+    function initIntersectionObserver() {
+        const catalogGrid = document.getElementById('catalogGrid');
+        let sentinel = document.getElementById('sentinel');
+        if (!sentinel) {
+            sentinel = document.createElement('div');
+            sentinel.id = 'sentinel';
+            sentinel.style.display = 'block';
+            sentinel.style.width = '100%';
+            sentinel.style.height = '20px';
+            sentinel.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+            catalogGrid.appendChild(sentinel);
         }
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !loading && !allLoaded) {
+                    currentPage++;
+                    fetchCatalog(currentPage);
+                }
+            });
+        }, {
+            root: catalogGrid,
+            threshold: 0.1
+        });
+        observer.observe(sentinel);
+    }
+
+    // ----- Scroll Event Fallback -----
+    function initScrollListener() {
+        const catalogGrid = document.getElementById('catalogGrid');
+        catalogGrid.addEventListener('scroll', function () {
+            const { scrollTop, scrollHeight, clientHeight } = catalogGrid;
+            if (!loading && !allLoaded && scrollTop + clientHeight >= scrollHeight - 50) {
+                currentPage++;
+                fetchCatalog(currentPage);
+            }
+        });
+    }
+
+    // ----- Tab Switching Logic -----
+    document.querySelectorAll('#tabs a').forEach(tabLink => {
+        tabLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href').substring(1);
+
+            // Hide all tabs.
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            // Show the selected tab.
+            document.getElementById(targetId).style.display = 'block';
+
+            if (targetId === 'product-catalog') {
+                resetCatalog();
+                const catalogGrid = document.getElementById('catalogGrid');
+                catalogGrid.innerHTML = '';
+                fetchCatalog(currentPage);
+                setTimeout(() => {
+                    initIntersectionObserver();
+                    initScrollListener();
+                }, 200);
+            }
+        });
     });
 
+    // ----- On Page Load -----
     fetchStores();
     fetchCategories();
     fetchBrands();
     fetchYears();
-    fetchCatalog();
 });

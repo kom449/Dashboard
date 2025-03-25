@@ -26,6 +26,13 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Ensure the catalog grid has a minimum height and scrollability */
+        #catalogGrid {
+            min-height: 500px; /* Adjust based on your layout */
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
     <!-- Tabs Navigation -->

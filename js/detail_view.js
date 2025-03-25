@@ -49,17 +49,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
 
+                // Box 1: Item info
                 document.getElementById('boxItemInfo').innerHTML =
                     `<h2>${data.item.title}</h2>
                      <img src="${data.item.image_link || 'img/placeholder.jpg'}" 
                           alt="${data.item.title}" 
                           onerror="this.src='img/placeholder.jpg'">`;
 
+                // Box 2: Sales summary (green for sales, red for cost)
                 document.getElementById('boxSalesSummary').innerHTML =
                     `<p style="font-size:16px;">Count: ${data.sales.count_sales || 0}</p>
                      <p style="font-size:18px; color:green;">Sales: ${formatNumberDan(data.sales.total_sales || 0)}</p>
                      <p style="font-size:14px; color:red;">Cost: ${formatNumberDan(data.sales.total_cost || 0)}</p>`;
 
+                // Box 3: Group variations – using group_count
                 if (data.group && data.group.length > 0) {
                     document.getElementById('boxItemGroup').innerHTML =
                         data.group.map(item => `
@@ -72,9 +75,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('boxItemGroup').innerHTML = `<p>No group variations</p>`;
                 }
 
+                // Box 4: Render shop performance chart
                 renderShopPerformanceChart(data.shopPerformance);
+
+                // Sales Trend Chart
                 renderSalesTrendChart(data.salesTrend);
 
+                // Hide product catalog, show detail view.
                 document.getElementById('product-catalog').style.display = 'none';
                 detailView.style.display = 'block';
             })
@@ -89,6 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function renderShopPerformanceChart(data) {
+        // Aggregate by shop_id and sort descending by count.
         const aggregated = {};
         data.forEach(d => {
             const shopId = d.shop_id;
