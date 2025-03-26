@@ -58,7 +58,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('boxSalesSummary').innerHTML =
                     `<p style="font-size:16px;">Count: ${data.sales.count_sales || 0}</p>
                      <p style="font-size:18px; color:green;">Sales: ${formatNumberDan(data.sales.total_sales || 0)}</p>
-                     <p style="font-size:14px; color:red;">Cost: ${formatNumberDan(data.sales.total_cost || 0)}</p>`;
+                     <p style="font-size:14px; color:orange;">Gross Profit: ${formatNumberDan((data.sales.total_sales || 0) - (data.sales.total_cost || 0))}</p>`;
+
 
                 if (data.group && data.group.length > 0) {
                     document.getElementById('boxItemGroup').innerHTML =

@@ -504,70 +504,70 @@ try {
         echo json_encode($data);
         exit();
     }
-    // ==================== PRODUCT CATALOG (with pagination) ====================
-    elseif ($interval === 'product_catalog') {
-        // Enable debugging if debug=1 is passed as a parameter.
-        $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
+   // ==================== PRODUCT CATALOG (with pagination) ====================
+elseif ($interval === 'product_catalog') {
+    // Enable debugging if debug=1 is passed as a parameter.
+    $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
 
-        $search   = $_GET['search'] ?? '';
-        $category = $_GET['category'] ?? 'all';
-        $brand    = $_GET['brand'] ?? 'all';
-        $storeId  = $_GET['store_id'] ?? 'all';
-        $year     = $_GET['year'] ?? '';
-        $month    = $_GET['month'] ?? 'all';
+    $search   = $_GET['search'] ?? '';
+    $category = $_GET['category'] ?? 'all';
+    $brand    = $_GET['brand'] ?? 'all';
+    $storeId  = $_GET['store_id'] ?? 'all';
+    $year     = $_GET['year'] ?? '';
+    $month    = $_GET['month'] ?? 'all';
 
-        $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-        $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
-        if ($page < 1) {
-            $page = 1;
-        }
-        if ($pageSize < 1) {
-            $pageSize = 20;
-        }
-        $offset   = ($page - 1) * $pageSize;
+    $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+    $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
+    if ($page < 1) {
+        $page = 1;
+    }
+    if ($pageSize < 1) {
+        $pageSize = 20;
+    }
+    $offset   = ($page - 1) * $pageSize;
 
-        $searchEscaped   = $conn->real_escape_string($search);
-        $categoryEscaped = $conn->real_escape_string($category);
-        $brandEscaped    = $conn->real_escape_string($brand);
-        $yearEscaped     = $conn->real_escape_string($year);
-        $monthEscaped    = $conn->real_escape_string($month);
+    $searchEscaped   = $conn->real_escape_string($search);
+    $categoryEscaped = $conn->real_escape_string($category);
+    $brandEscaped    = $conn->real_escape_string($brand);
+    $yearEscaped     = $conn->real_escape_string($year);
+    $monthEscaped    = $conn->real_escape_string($month);
 
-        $storeCondition = "";
-        if ($storeId === 'excludeOnline') {
-            $storeCondition = " AND (ps.shop_id != '" . $conn->real_escape_string($excludedShopId) . "' OR ps.shop_id IS NULL) ";
-        } elseif ($storeId !== 'all') {
-            $storeCondition = " AND (ps.shop_id = '" . $conn->real_escape_string($storeId) . "' OR ps.shop_id IS NULL) ";
-        }
+    $storeCondition = "";
+    if ($storeId === 'excludeOnline') {
+        $storeCondition = " AND (ps.shop_id != '" . $conn->real_escape_string($excludedShopId) . "' OR ps.shop_id IS NULL) ";
+    } elseif ($storeId !== 'all') {
+        $storeCondition = " AND (ps.shop_id = '" . $conn->real_escape_string($storeId) . "' OR ps.shop_id IS NULL) ";
+    }
 
-        $yearCondition = "";
-        if (!empty($year)) {
-            $yearCondition = " AND (YEAR(ps.completed_at) = '$yearEscaped' OR ps.completed_at IS NULL) ";
-        }
+    $yearCondition = "";
+    if (!empty($year)) {
+        $yearCondition = " AND (YEAR(ps.completed_at) = '$yearEscaped' OR ps.completed_at IS NULL) ";
+    }
 
-        $monthCondition = "";
-        if ($month !== 'all') {
-            $monthCondition = " AND (MONTH(ps.completed_at) = '$monthEscaped' OR ps.completed_at IS NULL) ";
-        }
+    $monthCondition = "";
+    if ($month !== 'all') {
+        $monthCondition = " AND (MONTH(ps.completed_at) = '$monthEscaped' OR ps.completed_at IS NULL) ";
+    }
 
-        $searchCondition = "";
-        if (!empty($search)) {
-            $searchCondition = " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%') ";
-        }
+    $searchCondition = "";
+    if (!empty($search)) {
+        $searchCondition = " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%') ";
+    }
 
-        $categoryCondition = "";
-        if ($category !== 'all') {
-            $categoryCondition = " AND (psi.product_category_identifier = '$categoryEscaped' OR psi.product_category_identifier IS NULL) ";
-        }
+    $categoryCondition = "";
+    if ($category !== 'all') {
+        $categoryCondition = " AND (psi.product_category_identifier = '$categoryEscaped' OR psi.product_category_identifier IS NULL) ";
+    }
 
-        $brandCondition = "";
-        if ($brand !== 'all') {
-            $brandCondition = " AND i.brand = '$brandEscaped' ";
-        }
+    $brandCondition = "";
+    if ($brand !== 'all') {
+        $brandCondition = " AND i.brand = '$brandEscaped' ";
+    }
 
-        /*
+    /*
       Branch 1: Standalone Items (items without a group_id)
     */
-        $standaloneSQL = "
+    $standaloneSQL = "
       SELECT 
           i.id AS id,
           i.image_link AS image_link,
@@ -591,12 +591,11 @@ try {
       GROUP BY i.id
     ";
 
-        /*
+    /*
       Branch 2: Grouped Items (items with a group_id)
-      For grouped items, we want the aggregated sales from both the group join and the individual join.
-      We also pick a representative record for the group.
+      For grouped items, we want the aggregated sales (from two joins) and representative info.
     */
-        $groupedDerived = "
+    $groupedDerived = "
       SELECT product_group, SUM(total_sales) AS total_sales, SUM(count_sales) AS count_sales, SUM(total_cost) AS total_cost
       FROM (
           SELECT 
@@ -640,19 +639,29 @@ try {
       GROUP BY product_group
     ";
 
-        $repSQL = "
+    // Representative query using conditional aggregation.
+    // If a master record exists (id = group_id) its values are used; otherwise, fallback to one of the variations.
+    $repSQL = "
       SELECT 
           group_id,
-          MIN(id) AS rep_id,
-          MIN(image_link) AS image_link,
-          MIN(title) AS title,
-          MIN(brand) AS brand
+          COALESCE(
+              MAX(CASE WHEN id = group_id THEN image_link END),
+              MAX(image_link)
+          ) AS image_link,
+          COALESCE(
+              MAX(CASE WHEN id = group_id THEN title END),
+              MAX(title)
+          ) AS title,
+          COALESCE(
+              MAX(CASE WHEN id = group_id THEN brand END),
+              MAX(brand)
+          ) AS brand
       FROM items
       WHERE group_id IS NOT NULL
       GROUP BY group_id
     ";
 
-        $groupedSQL = "
+    $groupedSQL = "
       SELECT 
           grp.product_group AS id,
           rep.image_link AS image_link,
@@ -669,7 +678,7 @@ try {
       ) rep ON rep.group_id = grp.product_group
     ";
 
-        $sql = "
+    $sql = "
       ($standaloneSQL)
       UNION ALL
       ($groupedSQL)
@@ -677,34 +686,35 @@ try {
       LIMIT $pageSize OFFSET $offset
     ";
 
-        if ($debug) {
-            error_log("DEBUG - Product Catalog UNION SQL Query: " . $sql);
-        }
-
-        $result = $conn->query($sql);
-        if (!$result) {
-            $errorMsg = "Database query failed (product_catalog): " . $conn->error;
-            if ($debug) {
-                error_log("DEBUG - SQL Error: " . $conn->error);
-                header('Content-Type: application/json');
-                echo json_encode([
-                    "error"     => "SQL Error",
-                    "sql_error" => $conn->error,
-                    "sql_query" => $sql
-                ]);
-                exit();
-            }
-            throw new Exception($errorMsg);
-        }
-
-        $data = [];
-        while ($row = $result->fetch_assoc()) {
-            $data[] = $row;
-        }
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit();
+    if ($debug) {
+        error_log("DEBUG - Product Catalog UNION SQL Query: " . $sql);
     }
+
+    $result = $conn->query($sql);
+    if (!$result) {
+        $errorMsg = "Database query failed (product_catalog): " . $conn->error;
+        if ($debug) {
+            error_log("DEBUG - SQL Error: " . $conn->error);
+            header('Content-Type: application/json');
+            echo json_encode([
+                "error"     => "SQL Error",
+                "sql_error" => $conn->error,
+                "sql_query" => $sql
+            ]);
+            exit();
+        }
+        throw new Exception($errorMsg);
+    }
+
+    $data = [];
+    while ($row = $result->fetch_assoc()) {
+        $data[] = $row;
+    }
+    header('Content-Type: application/json');
+    echo json_encode($data);
+    exit();
+}
+
 
     // ==================== PRODUCT PERFORMANCE ====================
     elseif ($interval === 'product_performance') {

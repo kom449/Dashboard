@@ -1069,7 +1069,7 @@ input {
 
 #boxItemGroup {
     overflow-y: auto;
-    max-height: 300px;
+    max-height: 400px;
 }
 
 #boxItemGroup div {

@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderCatalog(data, page) {
         const catalogGrid = document.getElementById('catalogGrid');
         if (page === 1) {
-            catalogGrid.innerHTML = '';
+            catalogGrid.innerHTML = ''; // Clear previous content.
         }
         if (data.error) {
             if (page === 1) catalogGrid.innerHTML = '<p>Error: ' + data.error + '</p>';
@@ -202,12 +202,14 @@ document.addEventListener('DOMContentLoaded', function () {
             sales.style.fontSize = '18px';
             details.appendChild(sales);
 
-            const cost = document.createElement('p');
+            // Updated: Show Gross Profit (in orange) instead of Cost (in red)
             const totalCost = Number(item.total_cost) || 0;
-            cost.textContent = "Cost: " + formatNumberDan(totalCost);
-            cost.style.color = 'red';
-            cost.style.fontSize = '14px';
-            details.appendChild(cost);
+            const grossProfit = totalSales - totalCost;
+            const grossProfitEl = document.createElement('p');
+            grossProfitEl.textContent = "Gross Profit: " + formatNumberDan(grossProfit);
+            grossProfitEl.style.color = 'orange';
+            grossProfitEl.style.fontSize = '14px';
+            details.appendChild(grossProfitEl);
 
             const count = document.createElement('p');
             const totalCount = Number(item.count_sales) || 0;
@@ -224,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
+            // Append the new item before the sentinel if it exists.
             const sentinel = document.getElementById('sentinel');
             if (sentinel) {
                 catalogGrid.insertBefore(catalogItem, sentinel);
@@ -232,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
 
     function formatNumberDan(num) {
         return new Intl.NumberFormat('da-DK', {
