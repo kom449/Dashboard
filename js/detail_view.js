@@ -197,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
                 scales: {
                     y: { beginAtZero: true, ticks: { autoSkip: false } },
                     x: { ticks: { autoSkip: false } }
