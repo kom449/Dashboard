@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
+    const navEntries = performance.getEntriesByType("navigation");
+    if (navEntries.length > 0 && navEntries[0].type === "reload") {
+        sessionStorage.removeItem('selectedYear');
+        sessionStorage.removeItem('selectedMonth');
+    }
+
     let currentPage = 1;
     let loading = false;
     let allLoaded = false;
@@ -72,6 +78,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     option.textContent = year;
                     yearDropdown.appendChild(option);
                 });
+                const storedYear = sessionStorage.getItem('selectedYear');
+                if (storedYear) {
+                    yearDropdown.value = storedYear;
+                }
             })
             .catch(error => console.error('Error fetching years:', error));
     }
@@ -89,10 +99,24 @@ document.addEventListener('DOMContentLoaded', function () {
         filterIds.forEach(id => {
             const element = document.getElementById(id);
             if (element) {
-                element.addEventListener('change', function () {
-                    resetCatalog();
-                    fetchCatalog(currentPage);
-                });
+                if (id === 'yearDropdownCatalog') {
+                    element.addEventListener('change', function () {
+                        sessionStorage.setItem('selectedYear', this.value);
+                        resetCatalog();
+                        fetchCatalog(currentPage);
+                    });
+                } else if (id === 'monthDropdownCatalog') {
+                    element.addEventListener('change', function () {
+                        sessionStorage.setItem('selectedMonth', this.value);
+                        resetCatalog();
+                        fetchCatalog(currentPage);
+                    });
+                } else {
+                    element.addEventListener('change', function () {
+                        resetCatalog();
+                        fetchCatalog(currentPage);
+                    });
+                }
                 if (id === 'productSearch') {
                     element.addEventListener('keyup', function () {
                         resetCatalog();
@@ -171,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
         data.forEach(item => {
             const catalogItem = document.createElement('div');
             catalogItem.className = 'catalog-item';
+            catalogItem.style.cursor = 'pointer'; // Set cursor to pointer to indicate clickability.
             catalogItem.setAttribute('data-product-id', item.id);
 
             const img = document.createElement('img');
@@ -202,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
             sales.style.fontSize = '18px';
             details.appendChild(sales);
 
-            // Updated: Show Gross Profit (in orange) instead of Cost (in red)
+            // Show Gross Profit (in orange) instead of cost.
             const totalCost = Number(item.total_cost) || 0;
             const grossProfit = totalSales - totalCost;
             const grossProfitEl = document.createElement('p');
@@ -226,7 +251,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Append the new item before the sentinel if it exists.
             const sentinel = document.getElementById('sentinel');
             if (sentinel) {
                 catalogGrid.insertBefore(catalogItem, sentinel);
@@ -235,7 +259,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
 
     function formatNumberDan(num) {
         return new Intl.NumberFormat('da-DK', {
@@ -250,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
         loading = false;
     }
 
-    // ----- IntersectionObserver Setup -----
+    // IntersectionObserver Setup
     function initIntersectionObserver() {
         const catalogGrid = document.getElementById('catalogGrid');
         let sentinel = document.getElementById('sentinel');
@@ -277,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
         observer.observe(sentinel);
     }
 
-    // ----- Scroll Event Fallback -----
+    // Scroll Event Fallback
     function initScrollListener() {
         const catalogGrid = document.getElementById('catalogGrid');
         catalogGrid.addEventListener('scroll', function () {
@@ -289,17 +312,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ----- Tab Switching Logic -----
+    // Tab Switching Logic
     document.querySelectorAll('#tabs a').forEach(tabLink => {
         tabLink.addEventListener('click', function (e) {
             e.preventDefault();
             const targetId = this.getAttribute('href').substring(1);
-
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.style.display = 'none';
             });
             document.getElementById(targetId).style.display = 'block';
-
             if (targetId === 'product-catalog') {
                 resetCatalog();
                 const catalogGrid = document.getElementById('catalogGrid');
@@ -313,11 +334,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ----- On Page Load -----
+    const yearDropdown = document.getElementById('yearDropdownCatalog');
+    const monthDropdown = document.getElementById('monthDropdownCatalog');
+    const storedYear = sessionStorage.getItem('selectedYear');
+    const storedMonth = sessionStorage.getItem('selectedMonth');
+    if (yearDropdown && storedYear) {
+        yearDropdown.value = storedYear;
+    }
+    if (monthDropdown && storedMonth) {
+        monthDropdown.value = storedMonth;
+    }
+
     fetchStores();
     fetchCategories();
     fetchBrands();
     fetchYears();
-    // Attach filter event listeners.
     attachFilterListeners();
 });
