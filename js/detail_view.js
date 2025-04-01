@@ -4,14 +4,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const detailMonthDropdown = document.getElementById('detailMonthDropdown');
         const storedYear = sessionStorage.getItem('selectedYear');
         const storedMonth = sessionStorage.getItem('selectedMonth');
+        console.log('Restoring selections: Year =', storedYear, 'Month =', storedMonth);
         if (detailYearDropdown && storedYear) {
             if (detailYearDropdown.querySelector(`option[value="${storedYear}"]`)) {
                 detailYearDropdown.value = storedYear;
+                console.log('Detail Year dropdown set to:', detailYearDropdown.value);
             }
         }
         if (detailMonthDropdown && storedMonth) {
             if (detailMonthDropdown.querySelector(`option[value="${storedMonth}"]`)) {
                 detailMonthDropdown.value = storedMonth;
+                console.log('Detail Month dropdown set to:', detailMonthDropdown.value);
             }
         }
     }
@@ -37,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 restoreDetailSelections();
             })
+            .catch(error => console.error('Error fetching detail years:', error));
     }
 
     let shopPerformanceChart = null;
@@ -46,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const detailView = document.getElementById('detailView');
         detailView.setAttribute('data-product-id', productId);
         restoreDetailSelections();
+
         const year = document.getElementById('detailYearDropdown').value;
         const month = document.getElementById('detailMonthDropdown').value;
 
@@ -67,27 +72,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 document.getElementById('boxItemInfo').innerHTML =
-                    `<h2>${data.item.title}</h2>
+                    `<h2 style="font-size:20px;">${data.item.title}</h2>
+                    <small style="display:block; font-size:16px; color:#666;">ID: ${data.item.id}</small>
                      <img src="${data.item.image_link || 'img/placeholder.jpg'}" 
-                          alt="${data.item.title}" 
-                          onerror="this.src='img/placeholder.jpg'">`;
+                      alt="${data.item.title}" 
+                      onerror="this.src='img/placeholder.jpg'">`;
 
                 document.getElementById('boxSalesSummary').innerHTML =
                     `<p style="font-size:16px;">Count: ${data.sales.count_sales || 0}</p>
-                     <p style="font-size:18px; color:green;">Sales: ${formatNumberDan(data.sales.total_sales || 0)}</p>
-                     <p style="font-size:14px; color:orange;">Gross Profit: ${formatNumberDan((data.sales.total_sales || 0) - (data.sales.total_cost || 0))}</p>`;
+                    <p style="font-size:18px; color:green;">Sales: ${formatNumberDan(data.sales.total_sales || 0)}</p>
+                    <p style="font-size:14px; color:orange;">Gross Profit: ${formatNumberDan((data.sales.total_sales || 0) * 0.8 - (data.sales.total_cost || 0))}</p>`;
 
                 if (data.group && data.group.length > 0) {
                     document.getElementById('boxItemGroup').innerHTML =
                         data.group.map(item => `
-                            <div class="group-item">
-                                <span class="group-item-title">${item.title}</span>
-                                <span class="group-item-count">${item.group_count ?? 0}</span>
+                            <div class="group-item" style="margin-bottom:8px;">
+                                <span class="group-item-title" style="display:block; font-size:13px; font-weight:bold;">${item.title}</span>
+                                <small style="display:block; font-size:14px; color:#666;">ID: ${item.id}</small>
+                                <span class="group-item-count" style="display:block; font-size:12px; margin-top:4px;">Count: ${item.group_count ?? 0}</span>
                             </div>
                         `).join('');
                 } else {
                     document.getElementById('boxItemGroup').innerHTML = `<p>No group variations</p>`;
                 }
+
+
 
                 renderShopPerformanceChart(data.shopPerformance);
                 renderSalesTrendChart(data.salesTrend);
@@ -151,15 +160,15 @@ document.addEventListener('DOMContentLoaded', function () {
         if (salesTrendChart) {
             salesTrendChart.destroy();
         }
-        
+
         const detailYearDropdown = document.getElementById('detailYearDropdown');
         const detailMonthDropdown = document.getElementById('detailMonthDropdown');
         const selectedYear = detailYearDropdown ? detailYearDropdown.value : new Date().getFullYear();
         const selectedMonth = detailMonthDropdown ? detailMonthDropdown.value : 'all';
-        
+
         let labels = [];
         let counts = [];
-        
+
         if (selectedMonth !== 'all') {
             const numDays = new Date(selectedYear, selectedMonth, 0).getDate();
             labels = Array.from({ length: numDays }, (_, i) => (i + 1).toString());
@@ -181,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             counts = data.map(item => item.count);
         }
-        
+
         const ctx = document.getElementById('salesTrendChart').getContext('2d');
         salesTrendChart = new Chart(ctx, {
             type: 'line',
@@ -197,7 +206,6 @@ document.addEventListener('DOMContentLoaded', function () {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
                 scales: {
                     y: { beginAtZero: true, ticks: { autoSkip: false } },
                     x: { ticks: { autoSkip: false } }
@@ -207,21 +215,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('detailYearDropdown').addEventListener('change', function () {
+        console.log('Detail Year changed to:', this.value);
         const productId = document.getElementById('detailView').getAttribute('data-product-id');
         sessionStorage.setItem('selectedYear', this.value);
         if (productId) loadDetailView(productId);
     });
     document.getElementById('detailMonthDropdown').addEventListener('change', function () {
+        console.log('Detail Month changed to:', this.value);
         const productId = document.getElementById('detailView').getAttribute('data-product-id');
         sessionStorage.setItem('selectedMonth', this.value);
         if (productId) loadDetailView(productId);
     });
-    
+
     document.getElementById('backButton').addEventListener('click', function () {
         document.getElementById('detailView').style.display = 'none';
         document.getElementById('product-catalog').style.display = 'block';
     });
-    
+
     window.loadDetailView = loadDetailView;
     fetchDetailYears();
 });

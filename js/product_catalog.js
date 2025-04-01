@@ -191,13 +191,12 @@ document.addEventListener('DOMContentLoaded', function () {
             catalogGrid.innerHTML = '<p>No products found.</p>';
             return;
         }
-
+    
         data.forEach(item => {
             const catalogItem = document.createElement('div');
             catalogItem.className = 'catalog-item';
-            catalogItem.style.cursor = 'pointer'; // Set cursor to pointer to indicate clickability.
             catalogItem.setAttribute('data-product-id', item.id);
-
+    
             const img = document.createElement('img');
             img.src = item.image_link ? item.image_link : 'img/placeholder.jpg';
             img.alt = item.title;
@@ -212,45 +211,52 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             };
             catalogItem.appendChild(img);
-
+    
             const details = document.createElement('div');
             details.className = 'catalog-item-details';
-
+    
             const title = document.createElement('h3');
             title.textContent = item.title;
+            title.style.fontSize = '16px';
             details.appendChild(title);
-
+    
+            const productIdEl = document.createElement('small');
+            productIdEl.textContent = "ID: " + item.id;
+            productIdEl.style.display = 'block';
+            productIdEl.style.fontSize = '12px';
+            productIdEl.style.color = '#666';
+            details.appendChild(productIdEl);
+    
             const sales = document.createElement('p');
             const totalSales = Number(item.total_sales) || 0;
             sales.textContent = formatNumberDan(totalSales);
             sales.style.color = 'green';
             sales.style.fontSize = '18px';
             details.appendChild(sales);
-
-            // Show Gross Profit (in orange) instead of cost.
+    
             const totalCost = Number(item.total_cost) || 0;
-            const grossProfit = totalSales - totalCost;
+            const grossProfit = totalSales * 0.8 - totalCost;
             const grossProfitEl = document.createElement('p');
             grossProfitEl.textContent = "Gross Profit: " + formatNumberDan(grossProfit);
             grossProfitEl.style.color = 'orange';
             grossProfitEl.style.fontSize = '14px';
             details.appendChild(grossProfitEl);
-
+    
             const count = document.createElement('p');
             const totalCount = Number(item.count_sales) || 0;
             count.textContent = 'Count: ' + totalCount;
             count.style.fontSize = '16px';
             details.appendChild(count);
-
+    
             catalogItem.appendChild(details);
-
+    
             catalogItem.addEventListener('click', function () {
                 const productId = this.getAttribute('data-product-id');
                 if (productId && typeof loadDetailView === 'function') {
                     loadDetailView(productId);
                 }
             });
-
+    
             const sentinel = document.getElementById('sentinel');
             if (sentinel) {
                 catalogGrid.insertBefore(catalogItem, sentinel);
@@ -259,6 +265,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+    
+    
 
     function formatNumberDan(num) {
         return new Intl.NumberFormat('da-DK', {

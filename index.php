@@ -27,9 +27,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Ensure the catalog grid has a minimum height and scrollability */
         #catalogGrid {
-            min-height: 500px; /* Adjust based on your layout */
+            min-height: 500px;
             overflow-y: auto;
         }
     </style>
@@ -260,10 +259,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <script src="js/orders.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/product_catalog.js"></script>
-    <!-- Include the detailed view script separately -->
     <script src="js/detail_view.js"></script>
     <script>
-        // Custom range toggle logic remains the same.
         document.addEventListener("DOMContentLoaded", function() {
             var customRangeCheckbox = document.getElementById("customRange");
             var customRangeContainer = document.getElementById("customRangeContainer");
