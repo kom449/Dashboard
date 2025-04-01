@@ -195,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function () {
         data.forEach(item => {
             const catalogItem = document.createElement('div');
             catalogItem.className = 'catalog-item';
+            catalogItem.style.cursor = 'pointer';
             catalogItem.setAttribute('data-product-id', item.id);
     
             const img = document.createElement('img');
