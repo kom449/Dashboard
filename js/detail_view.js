@@ -232,6 +232,20 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('product-catalog').style.display = 'block';
     });
 
+    // Add a global click listener to detect clicks outside the detail view
+    document.addEventListener('click', function (event) {
+        const detailView = document.getElementById('detailView');
+        const productCatalog = document.getElementById('product-catalog');
+        // Check if detail view is visible and the click target is not inside it.
+        if (detailView && detailView.style.display !== 'none' && !detailView.contains(event.target)) {
+            console.log('Click outside detail view detected. Hiding detail view.');
+            detailView.style.display = 'none';
+            if (productCatalog) {
+                productCatalog.style.display = 'block';
+            }
+        }
+    });
+
     window.loadDetailView = loadDetailView;
     fetchDetailYears();
 });

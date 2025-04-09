@@ -5,28 +5,40 @@ document.addEventListener("DOMContentLoaded", () => {
     tabLinks.forEach((tabLink) => {
         tabLink.addEventListener("click", (e) => {
             e.preventDefault();
-            // Remove active classes and hide all tabs.
+
+            const detailView = document.getElementById("detailView");
+            if (detailView) {
+                detailView.style.display = "none";
+            }
+
             tabLinks.forEach((link) => link.classList.remove("active"));
             tabs.forEach((tab) => {
                 tab.classList.remove("active");
                 tab.style.display = "none";
             });
-            // Add active class to clicked tab.
+
             tabLink.classList.add("active");
-            const target = tabLink.getAttribute("href").substring(1); // Get target id.
-            const targetElement = document.getElementById(target);
+            const targetId = tabLink.getAttribute("href").substring(1); // Get target id.
+            const targetElement = document.getElementById(targetId);
             if (targetElement) {
                 targetElement.classList.add("active");
                 targetElement.style.display = "block";
-                if (target === "all-products") {
-                    fetchAllProducts();
-                } else if (target === "product-catalog") {
-                    setupOrderSearch();
-                } else if (target === "admin-tab") {
+
+                if (targetId === "all-products") {
+                } else if (targetId === "product-catalog") {
+                    resetCatalog();
+                    const catalogGrid = document.getElementById("catalogGrid");
+                    catalogGrid.innerHTML = "";
+                    fetchCatalog(currentPage);
+                    setTimeout(() => {
+                        initIntersectionObserver();
+                        initScrollListener();
+                    }, 200);
+                } else if (targetId === "admin-tab") {
                     setupAdminTab();
                 }
             } else {
-                console.error(`Element with id "${target}" not found.`);
+                console.error(`Element with id "${targetId}" not found.`);
             }
         });
     });
