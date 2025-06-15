@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once "db.php";
+require_once "db.php"; // Ensure this file connects to your database
 
 header('Content-Type: application/json');
 
@@ -9,7 +9,7 @@ if (!isset($_SESSION['is_admin']) || !$_SESSION['is_admin']) {
     exit;
 }
 
-$query = "SELECT last_updated FROM update_log ORDER BY last_updated DESC LIMIT 1";
+$query = "SELECT last_updated FROM update_log ORDER BY last_updated DESC LIMIT 1"; // Using correct column name
 $result = $conn->query($query);
 
 if (!$result) {

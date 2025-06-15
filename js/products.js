@@ -87,4 +87,4 @@ function fetchAllProducts() {
         });
 }
 
-fetchAllProducts();
+window.fetchAllProducts = fetchAllProducts; // Make it globally accessible

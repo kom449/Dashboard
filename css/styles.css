@@ -214,7 +214,11 @@ h2 {
 #monthDropdownCatalog,
 #productSearch,
 #categoryDropdown,
-#brandDropdown {
+#brandDropdown,
+#categoryDropdownCatalog,
+#storeDropdownCatalog,
+#brandDropdownCatalog,
+#storeTrafficDropdown {
     width: 200px;
     padding: 8px 10px;
     font-size: 14px;
@@ -235,7 +239,11 @@ h2 {
 #monthDropdownCatalog:hover,
 #productSearch:hover,
 #categoryDropdown:hover,
-#brandDropdown:hover {
+#brandDropdown:hover,
+#storeDropdownCatalog:hover,
+#categoryDropdownCatalog:hover,
+#brandDropdownCatalog:hover,
+#storeTrafficDropdown:hover {
     border-color: #aaa;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
 }
@@ -249,12 +257,72 @@ h2 {
 #monthDropdownCatalog:focus,
 #productSearch:focus,
 #categoryDropdown:focus,
-#brandDropdown:focus {
+#brandDropdown:focus,
+#storeDropdownCatalog:focus,
+#categoryDropdownCatalog:focus,
+#brandDropdownCatalog:focus,
+#storeTrafficDropdown:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
+/* Center the dropdown in the Store Traffic tab */
+#store-traffic .selection-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Store Traffic: wider chart, fixed height, centered */
+#store-traffic .chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 80%;        
+  max-width: 900px;  
+  height: 400px;     
+  margin: 0 auto;    
+}
+
+#store-traffic .chart-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Date picker styling to match other selects */
+#trafficDateInput {
+  width: 200px;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  appearance: none;          /* remove native arrow on some browsers */
+}
+
+/* Hover state */
+#trafficDateInput:hover {
+  border-color: #aaa;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Focus state */
+#trafficDateInput:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Optional: align the little calendar icon on the right */
+#trafficDateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 0 8px;
+}
 
 
 /* Chart container */
@@ -1169,5 +1237,139 @@ input {
 
     #resetPasswordForm button {
         padding: 8px;
+    }
+}
+
+/* =========================
+   Product Creation Tab Styling
+   ========================= */
+
+#product-creation {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 800px;
+    margin: 0 auto 40px;
+}
+
+#product-creation h1 {
+    margin-bottom: 20px;
+    color: #444;
+}
+
+/* Form Container */
+#productCreationForm {
+    background-color: #fff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Group */
+#productCreationForm div {
+    margin-bottom: 15px;
+}
+
+#productCreationForm label {
+    display: block;
+    font-weight: bold;
+    color: #555;
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+/* Text Inputs */
+#productCreationForm input[type="text"],
+#productCreationForm input[type="number"],
+#productCreationForm input[type="url"],
+#productCreationForm textarea,
+#productCreationForm select {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    box-sizing: border-box;
+}
+
+/* Hover and Focus States */
+#productCreationForm input[type="text"]:hover,
+#productCreationForm input[type="number"]:hover,
+#productCreationForm input[type="url"]:hover,
+#productCreationForm textarea:hover,
+#productCreationForm select:hover {
+    border-color: #aaa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+#productCreationForm input[type="text"]:focus,
+#productCreationForm input[type="number"]:focus,
+#productCreationForm input[type="url"]:focus,
+#productCreationForm textarea:focus,
+#productCreationForm select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Textarea Specific */
+#productCreationForm textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Creation Button */
+#productCreationForm .creation-btn {
+    display: inline-block;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+#productCreationForm .creation-btn:hover {
+    background-color: #0056b3;
+    transform: scale(1.02);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+    #product-creation {
+        padding: 15px;
+    }
+
+    #productCreationForm {
+        padding: 15px;
+    }
+
+    #productCreationForm label {
+        font-size: 13px;
+    }
+
+    #productCreationForm input[type="text"],
+    #productCreationForm input[type="number"],
+    #productCreationForm input[type="url"],
+    #productCreationForm textarea,
+    #productCreationForm select {
+        font-size: 13px;
+        padding: 8px;
+    }
+
+    #productCreationForm .creation-btn {
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
     }
 }

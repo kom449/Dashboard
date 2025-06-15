@@ -110,6 +110,7 @@ function fetchStoreList() {
         console.error("Unexpected store list response:", data);
         return;
       }
+      // Clear the dropdown without hardcoding the default
       dropdown.innerHTML = '';
       data.forEach((store) => {
         const option = document.createElement("option");
@@ -161,7 +162,7 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
     currentYearMargin = Array(daysInMonth).fill(0);
     previousYearSales = Array(daysInMonth).fill(0);
     previousYearMargin = Array(daysInMonth).fill(0);
-    
+
     data.forEach((item) => {
       const index = parseInt(item.day) - 1;
       if (parseInt(item.year) === parseInt(selectedYear)) {
@@ -172,7 +173,7 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
         previousYearMargin[index] += parseFloat(item.db_this_year || 0);
       }
     });
-    
+
     // If the selected month is the current month of the current year, truncate to today’s day.
     if (parseInt(selectedYear) === now.getFullYear() && parseInt(selectedMonth) === (now.getMonth() + 1)) {
       limit = now.getDate();
@@ -207,15 +208,28 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
       const currentMonthIndex = now.getMonth();
       const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const fraction = now.getDate() / daysInCurrentMonth;
-      currentYearSales[currentMonthIndex] *= fraction;
-      currentYearMargin[currentMonthIndex] *= fraction;
-      previousYearSales[currentMonthIndex] *= fraction;
-      previousYearMargin[currentMonthIndex] *= fraction;
+
+      console.log("[YTD] before scaling:", {
+        month: currentMonthIndex + 1,
+        fraction,
+        current: currentYearSales[currentMonthIndex],
+        previous: previousYearSales[currentMonthIndex]
+      });
+
+
+
+      console.log("[YTD] after scaling:", {
+        current: currentYearSales[currentMonthIndex],  // should be unchanged
+        previous: previousYearSales[currentMonthIndex] // should be scaled
+      });
+
+      // slice off future months…
       labels = labels.slice(0, currentMonthIndex + 1);
       currentYearSales = currentYearSales.slice(0, currentMonthIndex + 1);
       currentYearMargin = currentYearMargin.slice(0, currentMonthIndex + 1);
       previousYearSales = previousYearSales.slice(0, currentMonthIndex + 1);
       previousYearMargin = previousYearMargin.slice(0, currentMonthIndex + 1);
+
       limit = currentMonthIndex + 1;
     } else {
       limit = labels.length;
@@ -306,7 +320,7 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
               }
               const salesColor = (salesDiff !== 'N/A' && salesDiff >= 0) ? "green" : "red";
               const marginColor = (marginDiff !== 'N/A' && marginDiff >= 0) ? "green" : "red";
-              html += 
+              html +=
                 `<div class="tooltip-header"><strong>${label} ${datasetYear}</strong></div>
                 <div class="tooltip-section">
                   <span class="tooltip-label">Sales:</span>
@@ -321,7 +335,7 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
                   <span class="tooltip-diff" style="color: ${marginColor};">(${marginDiff}%)</span>
                 </div>`;
             } else if (hoveredDatasetIndex === 1) {
-              html += 
+              html +=
                 `<div class="tooltip-header"><strong>${label} ${datasetYear}</strong></div>
                 <div class="tooltip-section">
                   <span class="tooltip-label">Sales:</span>
@@ -531,26 +545,26 @@ function generateCustomLegend(chart) {
   const legendContainer = document.getElementById("customLegend");
   if (!legendContainer) return;
   legendContainer.innerHTML = "";
-  
+
   // Use the precomputed limit from the chart data
   const limit = chart.data.limit || chart.data.labels.length;
-  
+
   chart.data.datasets.forEach((dataset, datasetIndex) => {
     const dataSlice = dataset.data.slice(0, limit);
     const totalSales = dataSlice.reduce((a, b) => a + b, 0);
     const totalMargin = dataset.contributionMargin ? dataset.contributionMargin.slice(0, limit).reduce((a, b) => a + b, 0) : 0;
     let legendHTML = `<span class="legend-color-box" style="background-color: ${dataset.backgroundColor};"></span>
       <span class="legend-label">${dataset.label}</span>`;
-    
+
     if (datasetIndex === 0 && chart.data.datasets.length > 1) {
       const previousSales = chart.data.datasets[1].data.slice(0, limit).reduce((a, b) => a + b, 0);
       let salesDiff = 'N/A';
       if (previousSales > 0) {
         salesDiff = (((totalSales - previousSales) / previousSales) * 100).toFixed(2);
       }
-      const previousMargin = dataset.contributionMargin && chart.data.datasets[1].contributionMargin 
-                             ? chart.data.datasets[1].contributionMargin.slice(0, limit).reduce((a, b) => a + b, 0)
-                             : 0;
+      const previousMargin = dataset.contributionMargin && chart.data.datasets[1].contributionMargin
+        ? chart.data.datasets[1].contributionMargin.slice(0, limit).reduce((a, b) => a + b, 0)
+        : 0;
       let marginDiff = 'N/A';
       if (previousMargin > 0) {
         marginDiff = (((totalMargin - previousMargin) / previousMargin) * 100).toFixed(2);
@@ -680,7 +694,7 @@ function handleInputChange() {
   const monthDropdown = document.getElementById("monthDropdown");
   const customRangeCheckbox = document.getElementById("customRange");
   const selectedStoreId = storeDropdown.value;
-  
+
   if (customRangeCheckbox && customRangeCheckbox.checked) {
     const startDate = document.getElementById("startDate").value;
     const endDate = document.getElementById("endDate").value;
@@ -703,7 +717,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("monthDropdown").addEventListener("change", handleInputChange);
   }
   if (document.getElementById("customRange")) {
-    document.getElementById("customRange").addEventListener("change", function() {
+    document.getElementById("customRange").addEventListener("change", function () {
       const yearDropdown = document.getElementById("yearDropdown");
       const monthDropdown = document.getElementById("monthDropdown");
       const customRangeContainer = document.getElementById("customRangeContainer");
