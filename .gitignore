@@ -2,3 +2,5 @@
 /db.php
 /.env
 img/
+/email_config.php
+vendor/
