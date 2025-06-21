@@ -1,17 +1,13 @@
 <?php
-// File: generate_description.php
-
 header('Content-Type: application/json');
 session_start();
 
-// 1) Autorisation: Tjek at brugeren er logget ind
 if (!isset($_SESSION['user_id']) || !$_SESSION['logged_in']) {
     http_response_code(401);
     echo json_encode(["error" => "Adgang nægtet. Log venligst ind."]);
     exit;
 }
 
-// 2) Læs JSON‐body fra JS
 $body = json_decode(file_get_contents('php://input'), true);
 if (!$body || !isset($body['produktnavn'], $body['produktnummer'], $body['pris'])) {
     http_response_code(400);
@@ -26,30 +22,22 @@ $pris          = $body['pris'];
 $beskrivManual = $body['beskriv_manual'] ?? "";
 $csvText       = $body['csv_data'] ?? "";
 
-// 3) Parse CSV‐indhold (hvis der er noget) og find match på Produktnummer
 $matchedRow = [];
 if (!empty($csvText)) {
-    // Brug fgetcsv på en midlertidig strøm
-    // Vi antager at CSV’ens første række er header‐felter (eks. "Produktnummer, Navn, Materiale, Farve, ...")
     $lines = preg_split('/\r\n|\r|\n/', trim($csvText));
     if (count($lines) > 1) {
         $fh = fopen('php://memory', 'r+');
         fwrite($fh, $csvText);
         rewind($fh);
 
-        // Læs først header‐række
         $header = fgetcsv($fh, 0, ",");
         $cols = array_map('trim', $header);
 
-        // Find index for kolonnen “Produktnummer”
         $nummerIndex = array_search('Produktnummer', $cols);
         if ($nummerIndex !== false) {
-            // Læs hver række og sammenlign
             while (($row = fgetcsv($fh, 0, ",")) !== false) {
-                // Trim alle celler
                 $trimmed = array_map('trim', $row);
                 if (isset($trimmed[$nummerIndex]) && $trimmed[$nummerIndex] === $produktnummer) {
-                    // Gem som assoc: ["Kol1navn" => "Celle1", "Kol2navn" => "Celle2", ...]
                     foreach ($cols as $i => $colName) {
                         $matchedRow[$colName] = $trimmed[$i] ?? "";
                     }
@@ -61,7 +49,7 @@ if (!empty($csvText)) {
     }
 }
 
-// 4) Byg prompt til Assistants‐API. Vi beder om JSON‐output med de fire nøgler.
+// Byg prompt til Assistants‐API. Vi beder om JSON‐output med de fire nøgler.
 $promptLines = [
     "Du er en AI‐assistent, der laver produktbeskrivelser på dansk. Ud fra de følgende data skal du returnere et JSON‐objekt med nøglerne:",
     "  - kort_beskrivelse",
@@ -95,7 +83,6 @@ $promptLines[] = "DU SKAL KUN SVARE MED ET GELDELIGT JSON‐OBJEKT. INGEN ANDRE 
 
 $userMessage = implode("\n", $promptLines);
 
-// 5) Assistants API‐opsætning
 $assistant_id = getenv('OPENAI_ASSISTANT_ID');
 $apiKey       = getenv('OPENAI_API_KEY');
 if (!$assistant_id || !$apiKey) {
@@ -111,7 +98,6 @@ $headers = [
     "OpenAI-Beta: assistans=v1"
 ];
 
-// Hjælpefunktion til cURL‐opsætning
 function curl_setup($url, $headers) {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -119,10 +105,9 @@ function curl_setup($url, $headers) {
     return $ch;
 }
 
-// 5.1) Opret en ny tråd
 $threadCh = curl_setup("$baseUrl/threads", $headers);
 curl_setopt($threadCh, CURLOPT_POST, true);
-curl_setopt($threadCh, CURLOPT_POSTFIELDS, json_encode([])); // Tomt body
+curl_setopt($threadCh, CURLOPT_POSTFIELDS, json_encode([]));
 $threadResp = curl_exec($threadCh);
 if (curl_errno($threadCh)) {
     http_response_code(500);
@@ -140,7 +125,6 @@ if (!isset($threadData['id'])) {
 }
 $thread_id = $threadData['id'];
 
-// 5.2) Tilføj bruger‐prompt til tråden
 $msgBody = json_encode([
     "role"    => "user",
     "content" => $userMessage
@@ -157,7 +141,6 @@ if (curl_errno($msgCh)) {
 }
 curl_close($msgCh);
 
-// 5.3) Kør assistenten på tråden
 $runBody = json_encode([ "assistant_id" => $assistant_id ]);
 $runCh = curl_setup("$baseUrl/threads/$thread_id/runs", $headers);
 curl_setopt($runCh, CURLOPT_POST, true);
@@ -179,7 +162,6 @@ if (!isset($runData['id'])) {
 }
 $run_id = $runData['id'];
 
-// 5.4) Poll indtil status = "completed"
 $status = $runData['status'];
 while ($status !== "completed") {
     usleep(500000); // 0.5 s
@@ -199,7 +181,6 @@ while ($status !== "completed") {
     }
 }
 
-// 5.5) Hent alle beskeder fra tråden og find den sidste assistant‐besked
 $fetchCh = curl_setup("$baseUrl/threads/$thread_id/messages", $headers);
 curl_setopt($fetchCh, CURLOPT_HTTPGET, true);
 $fetchResp = curl_exec($fetchCh);
@@ -226,11 +207,9 @@ if (empty($assistantReply)) {
     exit;
 }
 
-// 6) Parser AI’ens JSON‐output
 $aiJson = json_decode($assistantReply, true);
 if (json_last_error() !== JSON_ERROR_NONE || 
     !isset($aiJson['kort_beskrivelse'], $aiJson['udvidet_beskrivelse'], $aiJson['title_tag'], $aiJson['metatag_beskrivelse'])) {
-    // Hvis det ikke er gyldig JSON, returner fejl
     http_response_code(500);
     echo json_encode([
       "error" => "Uventet AI‐respons. Forventet JSON med fire nøgler."
@@ -238,7 +217,6 @@ if (json_last_error() !== JSON_ERROR_NONE ||
     exit;
 }
 
-// 7) Returnér de fire nøgler til JS
 echo json_encode([
     "kort_beskrivelse"     => $aiJson['kort_beskrivelse'],
     "udvidet_beskrivelse"  => $aiJson['udvidet_beskrivelse'],

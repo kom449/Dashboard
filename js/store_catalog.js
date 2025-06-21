@@ -4,42 +4,59 @@ window.initStoreCatalogTab = function() {
   const container      = document.getElementById("store-catalog");
   if (!container) return;
 
-  // Dropdowns & rows
+  // grab controls & rows
   const storeSelect    = container.querySelector("#storeDropdownCatalog");
   const categorySelect = container.querySelector("#categoryDropdownCatalog");
-  const brandSelect    = container.querySelector("#brandDropdownCatalog");
+  const actorSelect    = container.querySelector("#actorDropdownCatalog");  // renamed
+  const outToggle      = container.querySelector("#outOfStockToggle");
   const rows           = Array.from(container.querySelectorAll("#storeCatalogBody tr"));
 
-  if (!storeSelect || !categorySelect || !brandSelect || rows.length === 0) {
-    console.warn("Store Catalog: missing selects or no rows");
+  if (!storeSelect || !categorySelect || !actorSelect || !outToggle || rows.length === 0) {
+    console.warn("Store Catalog: missing elements or no rows");
     return;
   }
 
   function filterRows() {
     const storeVal = storeSelect.value;
     const catVal   = categorySelect.value;
-    const brandVal = brandSelect.value.toLowerCase();
+    const actorVal = actorSelect.value.toLowerCase();
+    const onlyOut  = outToggle.checked;
 
     rows.forEach(row => {
       const rowShop    = row.dataset.shop     || "all";
       const rowCat     = row.dataset.category || "all";
-      const rowBrand   = (row.dataset.brand   || "").toLowerCase();
+      const rowActor   = (row.dataset.actor   || "").toLowerCase();
+      const stockCount = parseInt(row.dataset.stockCount, 10)   || 0;
 
-      const matchesStore    = (storeVal === "all") || (rowShop  === storeVal);
-      const matchesCategory = (catVal   === "all") || (rowCat   === catVal);
-      const matchesBrand    = (brandVal === "all") || (rowBrand === brandVal);
+      const matchesStore    = storeVal === "all"  || rowShop  === storeVal;
+      const matchesCategory = catVal   === "all"  || rowCat   === catVal;
+      const matchesActor    = actorVal === "all"  || rowActor === actorVal;
+      const matchesOut      = !onlyOut           || stockCount === 0;
 
-      row.style.display = (matchesStore && matchesCategory && matchesBrand) ? "" : "none";
+      row.style.display = (matchesStore && matchesCategory && matchesActor && matchesOut)
+        ? "" : "none";
+    });
+
+    highlightRows();
+  }
+
+  function highlightRows() {
+    rows.forEach(row => {
+      const stock  = parseInt(row.dataset.stockCount, 10)   || 0;
+      const minQty = parseInt(row.dataset.minQuantity, 10) || 0;
+      row.classList.toggle("low-stock", stock < minQty);
     });
   }
 
-  // Attach filter listeners
-  [storeSelect, categorySelect, brandSelect].forEach(sel =>
-    sel.addEventListener("change", filterRows)
+  // attach listeners
+  [storeSelect, categorySelect, actorSelect, outToggle].forEach(el =>
+    el.addEventListener("change", filterRows)
   );
-  filterRows(); // initial
 
-  // ——— Modal logic ———
+  // initial pass
+  filterRows();
+
+  // lightbox modal
   const modal    = document.getElementById("imgModal");
   const modalImg = document.getElementById("modalImg");
   const caption  = document.getElementById("caption");
@@ -53,11 +70,7 @@ window.initStoreCatalogTab = function() {
     });
   });
 
-  closeBtn.addEventListener("click", () => {
-    modal.style.display = "none";
-  });
-
-  // clicking outside the image closes
+  closeBtn.addEventListener("click", () => modal.style.display = "none");
   modal.addEventListener("click", e => {
     if (e.target === modal) modal.style.display = "none";
   });

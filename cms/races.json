@@ -1,0 +1,58 @@
+[
+    {
+        "date": "01.02.25",
+        "race": "POWERCUP",
+        "link": "https://fynrundt.dk/2025",
+        "city": "NR. LYNDELSE",
+        "type": "MTB"
+    },
+    {
+        "date": "22.02.25",
+        "race": "POWERCUP",
+        "link": "https://fynrundt.dk/2025",
+        "city": "SVENDBORG",
+        "type": "MTB"
+    },
+    {
+        "date": "01.03.25",
+        "race": "MELFAR MTB",
+        "link": "https://fynrundt.dk/2025",
+        "city": "MIDDELFART",
+        "type": "MTB"
+    },
+    {
+        "date": "08.03.25",
+        "race": "POWERCUP",
+        "link": "https://fynrundt.dk/2025",
+        "city": "NYBORG",
+        "type": "MTB"
+    },
+    {
+        "date": "05.04.25",
+        "race": "POWERCUP",
+        "link": "https://fynrundt.dk/2025",
+        "city": "HÅRBY",
+        "type": "MTB"
+    },
+    {
+        "date": "04.05.25",
+        "race": "FYEN RUNDT",
+        "link": "https://fynrundt.dk/2025",
+        "city": "MIDDELFART",
+        "type": "LANDEVEJ"
+    },
+    {
+        "date": "31.08.25",
+        "race": "LANGELAND RUNDT",
+        "link": "https://fynrundt.dk/2025",
+        "city": "HUMBLE",
+        "type": "GRAVEL"
+    },
+    {
+        "date": "21.09.25",
+        "race": "CARL NIELSEN TOUREN",
+        "link": "https://fynrundt.dk/2025",
+        "city": "NR. LYNDELSE",
+        "type": "LANDEVEJ"
+    }
+]

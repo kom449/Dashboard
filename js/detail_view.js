@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let shopPerformanceChart = null;
     let salesTrendChart = null;
+    let storeComparisonChart = null;   // <-- new
 
     function loadDetailView(productId) {
         const detailView = document.getElementById('detailView');
@@ -96,10 +97,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     document.getElementById('boxItemGroup').innerHTML = `<p>No group variations</p>`;
                 }
 
-
-
                 renderShopPerformanceChart(data.shopPerformance);
                 renderSalesTrendChart(data.salesTrend);
+                renderStoreComparisonChart(data.shopPerformance);  // <-- new
 
                 document.getElementById('product-catalog').style.display = 'none';
                 detailView.style.display = 'block';
@@ -184,10 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 "January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"
             ];
-            labels = data.map(item => {
-                const m = parseInt(item.period, 10);
-                return monthNames[m - 1] || item.period;
-            });
+            labels = data.map(item => monthNames[parseInt(item.period, 10) - 1] || item.period);
             counts = data.map(item => item.count);
         }
 
@@ -214,6 +211,54 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // <-- new function below
+    function renderStoreComparisonChart(data) {
+        const agg = {};
+        data.forEach(d => {
+            const id = d.shop_id;
+            const name = (d.shop_name || '').trim() || `Shop ${id}`;
+            const cnt = parseInt(d.shop_sales, 10) || 0;
+            if (!agg[id]) agg[id] = { name, total: 0 };
+            agg[id].total += cnt;
+        });
+        const items = Object.values(agg).sort((a, b) => b.total - a.total);
+        const labels = items.map(i => i.name);
+        const values = items.map(i => i.total);
+        const bgColors = labels.map((_, i) =>
+            `hsl(${Math.round(i * 360 / labels.length)}, 70%, 50%)`
+        );
+
+        if (storeComparisonChart) {
+            storeComparisonChart.destroy();
+        }
+        const ctx = document.getElementById('storeComparisonChart').getContext('2d');
+        storeComparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Total Sales',
+                    data: values,
+                    backgroundColor: bgColors
+                }]
+            },
+            options: {
+                indexAxis: 'y',               // remove this line for vertical bars
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'Store Sales Comparison' }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { autoSkip: true, maxTicksLimit: 6 } },
+                    y: { ticks: { autoSkip: false } }
+                }
+            }
+        });
+    }
+
+
     document.getElementById('detailYearDropdown').addEventListener('change', function () {
         console.log('Detail Year changed to:', this.value);
         const productId = document.getElementById('detailView').getAttribute('data-product-id');
@@ -232,17 +277,13 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('product-catalog').style.display = 'block';
     });
 
-    // Add a global click listener to detect clicks outside the detail view
     document.addEventListener('click', function (event) {
         const detailView = document.getElementById('detailView');
         const productCatalog = document.getElementById('product-catalog');
-        // Check if detail view is visible and the click target is not inside it.
         if (detailView && detailView.style.display !== 'none' && !detailView.contains(event.target)) {
             console.log('Click outside detail view detected. Hiding detail view.');
             detailView.style.display = 'none';
-            if (productCatalog) {
-                productCatalog.style.display = 'block';
-            }
+            if (productCatalog) productCatalog.style.display = 'block';
         }
     });
 

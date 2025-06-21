@@ -10,7 +10,7 @@ session_set_cookie_params([
 include 'cors.php';
 session_start();
 
-// 1) must include DB so we can re-query
+// 1) include DB so we can re-query
 include 'db.php';
 
 // 2) redirect if not logged in
@@ -19,23 +19,24 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     exit();
 }
 
-// 3) re-sync flags from DB
+// 3) re-sync flags (and store_id) from DB
 $stmt = $conn->prepare("
-  SELECT is_admin, is_store_manager 
-    FROM admin_auth 
+  SELECT is_admin, is_store_manager, store_id
+    FROM admin_auth
    WHERE id = ?
 ");
 $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
-$stmt->bind_result($dbIsAdmin, $dbIsStoreManager);
+$stmt->bind_result($dbIsAdmin, $dbIsStoreManager, $dbStoreId);
 $stmt->fetch();
 $stmt->close();
 
 // 4) overwrite session flags
 $_SESSION['is_admin']         = (bool)$dbIsAdmin;
 $_SESSION['is_store_manager'] = (bool)$dbIsStoreManager;
+$_SESSION['store_id']         = $dbStoreId;
 
-// 5) convenience variable
+// 5) convenience variables
 $is_admin         = (bool)($_SESSION['is_admin'] ?? false);
 $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
 ?>
@@ -45,11 +46,12 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Customer Dashboard</title>
     <link rel="icon" href="favicon.png">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         #catalogGrid {
             min-height: 500px;
@@ -63,29 +65,66 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
     <div id="tabs">
         <ul>
             <?php if ($is_store_manager): ?>
-                <li><a href="#store-catalog" class="active">Store Catalog</a></li>
+
+                <!-- Store Managers: two flat tabs -->
+                <li><a href="#store-catalog">Store Catalog</a></li>
+                <li><a href="#store-transfer"class="active">Transfer Stock</a></li>
+
             <?php else: ?>
+
+                <!-- Everyone else (admins and staff): grouped dropdowns -->
                 <li><a href="#main-page" class="active">Main Page</a></li>
-                <li><a href="#all-products">All Products</a></li>
-                <li><a href="#product-creation">Product Creation</a></li>
-                <li><a href="#product-catalog">Product Performance</a></li>
-                <li><a href="#store-traffic">Store Traffic</a></li>
+
+                <li class="dropdown">
+                    <button type="button" class="dropbtn">Products</button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#all-products">All Products</a></li>
+                        <li><a href="#product-creation">Product Creation</a></li>
+                        <li><a href="#product-catalog">Product Performance</a></li>
+                    </ul>
+                </li>
+
+                <li class="dropdown">
+                    <button type="button" class="dropbtn">Store</button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#store-traffic">Store Traffic</a></li>
+                        <li><a href="#store-catalog">Store Catalog</a></li>
+                        <?php if ($is_admin): ?>
+                            <li><a href="#store-catalog-sales">Store Catalog sales</a></li>
+                        <?php endif; ?>
+                        <li><a href="#store-pickups">Store Pickups</a></li>
+                    </ul>
+                </li>
+
+                <li class="dropdown">
+                    <button type="button" class="dropbtn">Website</button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#bikerace-cms">Bikerace CMS</a></li>
+                    </ul>
+                </li>
+
                 <?php if ($is_admin): ?>
-                    <li><a href="#store-catalog">Store Catalog</a></li>
-                    <li><a href="#admin-tab">Admin</a></li>
+                    <li class="dropdown">
+                        <button type="button" class="dropbtn">Transfers</button>
+                        <ul class="dropdown-menu">
+                            <li><a href="#store-transfer">Transfer Stock</a></li>
+                            <li><a href="#transfer-monitor">Transfer Monitor</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#admin-tab">Admin Panel</a></li>
                 <?php endif; ?>
             <?php endif; ?>
         </ul>
     </div>
-
 
     <!-- Tab Content -->
     <div id="tab-content">
 
         <?php if ($is_store_manager): ?>
 
-            <!-- Store Manager: only the Store Catalog pane -->
+            <!-- Only for Store Managers -->
             <?php include 'store_catalog.php'; ?>
+            <?php include 'store_transfer.php'; ?>
 
         <?php else: ?>
 
@@ -376,6 +415,9 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
                 <div class="detail-trend">
                     <canvas id="salesTrendChart"></canvas>
                 </div>
+                <div class="detail-comparison" style="height: 400px; margin-top: 20px;">
+                    <canvas id="storeComparisonChart"></canvas>
+                </div>
             </div>
 
             <!-- Store Traffic -->
@@ -398,9 +440,39 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
                 </div>
             </div>
 
+            <!-- Store Catalog Sales -->
+            <?php if ($is_admin): ?>
+                <?php include 'store_catalog_sales.php'; ?>
+            <?php endif; ?>
+
+            <!-- Store Pickups -->
+            <div id="store-pickups" class="tab" style="display: none;">
+                <h1>Store Pickups</h1>
+
+                <div id="storeSelection" class="selection-container">
+                    <div>
+                        <label for="storeDropdownPickups">Select Store:</label>
+                        <select id="storeDropdownPickups"></select>
+                    </div>
+                    <div>
+                        <label for="yearDropdownPickups">Select Year:</label>
+                        <select id="yearDropdownPickups"></select>
+                    </div>
+                    <div>
+                        <label for="monthDropdownPickups">Select Month:</label>
+                        <select id="monthDropdownPickups"></select>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="pickupsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Store Catalog & Transfer -->
             <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
                 <?php include 'store_catalog.php'; ?>
-
+                <?php include 'store_transfer.php'; ?>
                 <!-- Admin Tab -->
                 <div id="admin-tab" class="tab">
                     <h1>Admin Panel</h1>
@@ -420,11 +492,34 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
                 </div>
             <?php endif; ?>
 
+            <?php if ($is_admin): ?>
+                <!-- Transfer Monitor -->
+                <div id="transfer-monitor" class="tab" style="display: none;">
+                    <h1>Transfer Monitor</h1>
+                    <div id="transfer-monitor-container">
+                        <table id="adminTransferTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Product</th>
+                                    <th>Source</th>
+                                    <th>Destination</th>
+                                    <th>Qty</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by js/admin_transfers.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <?php endif; ?>
+            <?php include __DIR__ . '/bikerace.php'; ?>
         <?php endif; ?>
-
     </div>
-
-
 
     <!-- Logout -->
     <a href="logout.php" class="logout-link">Logout</a>
@@ -432,6 +527,7 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
     <!-- Scripts -->
     <script src="js/tabs.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/admin_transfers.js"></script>
     <script src="js/products.js"></script>
     <script src="js/customers.js"></script>
     <script src="js/orders.js"></script>
@@ -441,41 +537,32 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
     <script src="js/product_creation.js"></script>
     <script src="js/store_traffic.js"></script>
     <script src="js/store_catalog.js"></script>
-
-
+    <script src="js/store_catalog_sales.js"></script>
+    <script src="js/store_transfer.js"></script>
+    <script src="js/store_pickups.js"></script>
+    <script src="js/bikerace.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            var customRangeCheckbox = document.getElementById("customRange");
-            var customRangeContainer = document.getElementById("customRangeContainer");
-            var yearDropdown = document.getElementById("yearDropdown");
-            var monthDropdown = document.getElementById("monthDropdown");
-            var yearDropdownLabel = document.querySelector('label[for="yearDropdown"]');
-            var monthDropdownLabel = document.querySelector('label[for="monthDropdown"]');
+            const customRangeCheckbox = document.getElementById("customRange");
+            const customRangeContainer = document.getElementById("customRangeContainer");
+            const yearDropdown = document.getElementById("yearDropdown");
+            const monthDropdown = document.getElementById("monthDropdown");
+            const yearLabel = document.querySelector('label[for="yearDropdown"]');
+            const monthLabel = document.querySelector('label[for="monthDropdown"]');
 
             customRangeCheckbox.addEventListener("change", function() {
                 if (this.checked) {
-                    yearDropdown.disabled = true;
-                    monthDropdown.disabled = true;
-                    monthDropdown.style.display = "none";
-                    yearDropdown.style.display = "none";
-                    if (yearDropdownLabel) yearDropdownLabel.style.display = "none";
-                    if (monthDropdownLabel) monthDropdownLabel.style.display = "none";
-
+                    yearDropdown.disabled = monthDropdown.disabled = true;
+                    yearDropdown.style.display = monthDropdown.style.display = "none";
+                    yearLabel.style.display = monthLabel.style.display = "none";
                     customRangeContainer.style.display = "flex";
                 } else {
-                    yearDropdown.disabled = false;
-                    monthDropdown.disabled = false;
-                    monthDropdown.style.display = "inline-block";
-                    yearDropdown.style.display = "inline-block";
-                    if (yearDropdownLabel) yearDropdownLabel.style.display = "inline";
-                    if (monthDropdownLabel) monthDropdownLabel.style.display = "inline";
-
+                    yearDropdown.disabled = monthDropdown.disabled = false;
+                    yearDropdown.style.display = monthDropdown.style.display = "inline-block";
+                    yearLabel.style.display = monthLabel.style.display = "inline";
                     customRangeContainer.style.display = "none";
                 }
-
-                if (typeof handleInputChange === "function") {
-                    handleInputChange();
-                }
+                if (typeof handleInputChange === "function") handleInputChange();
             });
         });
     </script>

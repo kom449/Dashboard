@@ -1,113 +1,142 @@
 // js/tabs.js
 
-let isAllProductsLoaded = false;  // track whether we’ve already fetched all products
+let isAllProductsLoaded = false;
+let isBikeraceLoaded = false;
 
 document.addEventListener("DOMContentLoaded", () => {
-    const tabLinks = document.querySelectorAll("#tabs ul li a");
-    const tabs     = document.querySelectorAll(".tab");
+    // 1) Only real tab‐links: href="#some-id" but NOT dropbtn roots
+    const tabLinks = document.querySelectorAll(
+        "#tabs ul li a[href^='#']:not(.dropbtn):not([href='#'])"
+    );
+    const dropdownBtns = document.querySelectorAll("#tabs .dropbtn");
+    const tabs = document.querySelectorAll(".tab");
 
-    tabLinks.forEach((tabLink) => {
-        tabLink.addEventListener("click", (e) => {
+    // 2) Dropdown toggle: prevent default + stopPropagation + close others
+    dropdownBtns.forEach(btn => {
+        btn.addEventListener("click", e => {
             e.preventDefault();
+            e.stopPropagation();
 
-            // Hide the detail view if it's shown.
-            const detailView = document.getElementById("detailView");
-            if (detailView) {
-                detailView.style.display = "none";
-            }
-
-            // Remove 'active' classes and hide all tabs.
-            tabLinks.forEach((link) => link.classList.remove("active"));
-            tabs.forEach((tab) => {
-                tab.classList.remove("active");
-                tab.style.display = "none";
+            // close any OTHER open dropdown
+            document.querySelectorAll(".dropdown.open").forEach(drop => {
+                if (drop !== btn.parentElement) drop.classList.remove("open");
             });
 
-            // Activate the clicked tab.
-            tabLink.classList.add("active");
-            const targetId      = tabLink.getAttribute("href").substring(1);
-            const targetElement = document.getElementById(targetId);
+            // toggle this one
+            btn.parentElement.classList.toggle("open");
+        });
+    });
 
-            if (!targetElement) {
-                console.error(`Element with id "${targetId}" not found.`);
+    // 3) Clicking anywhere else closes all dropdowns
+    document.addEventListener("click", () => {
+        document.querySelectorAll(".dropdown.open")
+            .forEach(drop => drop.classList.remove("open"));
+    });
+
+    // 4) Tab‐switch logic on filtered tabLinks only
+    tabLinks.forEach(link => {
+        link.addEventListener("click", e => {
+            e.preventDefault();
+
+            // a) close any open dropdown
+            document.querySelectorAll(".dropdown.open")
+                .forEach(drop => drop.classList.remove("open"));
+
+            // b) hide detail view
+            const detailView = document.getElementById("detailView");
+            if (detailView) detailView.style.display = "none";
+
+            // c) clear active states
+            tabLinks.forEach(a => a.classList.remove("active"));
+            tabs.forEach(t => {
+                t.classList.remove("active");
+                t.style.display = "none";
+            });
+
+            // d) activate this tab
+            link.classList.add("active");
+            const id = link.getAttribute("href").slice(1);
+            const pane = document.getElementById(id);
+            if (!pane) {
+                console.error(`No tab pane found for #${id}`);
                 return;
             }
+            pane.classList.add("active");
+            pane.style.display = "block";
 
-            targetElement.classList.add("active");
-            targetElement.style.display = "block";
-
-            // Tab‐specific initialization logic
-            switch (targetId) {
+            // e) your existing per‐tab init logic
+            switch (id) {
                 case "all-products":
-                    // only fetch once, if the function exists
                     if (!isAllProductsLoaded && typeof window.fetchAllProducts === "function") {
                         window.fetchAllProducts();
                         isAllProductsLoaded = true;
                     }
                     break;
-
                 case "product-creation":
-                    // … existing product-creation logic …
-                    // e.g. initProductCreationForm();
+                    // …initProductCreationForm() etc…
                     break;
-
                 case "product-catalog":
                     resetCatalog();
-                    const catalogGrid = document.getElementById("catalogGrid");
-                    catalogGrid.innerHTML = "";
+                    document.getElementById("catalogGrid").innerHTML = "";
                     fetchCatalog(currentPage);
                     setTimeout(() => {
                         initIntersectionObserver();
                         initScrollListener();
                     }, 200);
                     break;
-
                 case "store-catalog":
-                    if (typeof window.initStoreCatalogTab === "function") {
-                        window.initStoreCatalogTab();
+                    typeof window.initStoreCatalogTab === "function"
+                        ? window.initStoreCatalogTab()
+                        : console.error("Did you include js/store_catalog.js?");
+                    break;
+                case "store-catalog-sales":
+                    if (typeof window.initStoreCatalogSales === "function") {
+                        window.initStoreCatalogSales();
                     } else {
-                        console.error("initStoreCatalogTab() is not defined. Did you include js/store_catalog.js?");
+                        console.error("Did you include js/store_catalog_sales.js?");
                     }
                     break;
-
                 case "store-traffic":
-                    if (typeof window.initStoreTrafficTab === "function") {
-                        window.initStoreTrafficTab();
-                    } else {
-                        console.error("initStoreTrafficTab() is not defined. Did you include js/store_traffic.js?");
-                    }
+                    typeof window.initStoreTrafficTab === "function"
+                        ? window.initStoreTrafficTab()
+                        : console.error("Did you include js/store_traffic.js?");
                     break;
-
                 case "store-transfer":
-                    if (typeof window.initStoreTransferTab === "function") {
-                        window.initStoreTransferTab();
-                    } else {
-                        console.error("initStoreTransferTab() is not defined. Did you include js/store_transfer.js?");
-                    }
+                    typeof window.initStoreTransferTab === "function"
+                        ? window.initStoreTransferTab()
+                        : console.error("Did you include js/store_transfer.js?");
                     break;
-
                 case "transfer-monitor":
-                    if (typeof window.initTransferMonitorTab === "function") {
-                        window.initTransferMonitorTab();
-                    } else {
-                        console.error("initTransferMonitorTab() is not defined. Did you include js/admin_transfers.js?");
-                    }
+                    typeof window.initTransferMonitorTab === "function"
+                        ? window.initTransferMonitorTab()
+                        : console.error("Did you include js/admin_transfers.js?");
                     break;
-
+                case "store-pickups":
+                    if (typeof window.initStorePickupsTab === "function")
+                        window.initStorePickupsTab();
+                    else
+                        console.error("Did you include js/store_pickups.js?");
+                    break;
+                case "bikerace-cms":
+                    if (typeof window.initBikeraceCMS === "function") {
+                        window.initBikeraceCMS();
+                        window.isBikeraceLoaded = true;
+                    }
+                    else
+                        console.error("Did you include js/bikerace.js?");
+                    break;
                 case "admin-tab":
                     setupAdminTab();
                     break;
-
                 default:
-                    // no special init
                     break;
             }
         });
     });
 
-    // Auto‐initialize whichever tab link is marked .active on page load
-    const activeLink = document.querySelector("#tabs ul li a.active");
-    if (activeLink) {
-        activeLink.click();
-    }
+    // 5) Auto‐open whichever link was marked .active on load
+    const active = document.querySelector(
+        "#tabs ul li a.active[href^='#']:not(.dropbtn):not([href='#'])"
+    );
+    if (active) active.click();
 });

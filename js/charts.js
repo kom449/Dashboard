@@ -209,20 +209,6 @@ function renderMonthlyChart(data, selectedYear, selectedMonth) {
       const daysInCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const fraction = now.getDate() / daysInCurrentMonth;
 
-      console.log("[YTD] before scaling:", {
-        month: currentMonthIndex + 1,
-        fraction,
-        current: currentYearSales[currentMonthIndex],
-        previous: previousYearSales[currentMonthIndex]
-      });
-
-
-
-      console.log("[YTD] after scaling:", {
-        current: currentYearSales[currentMonthIndex],  // should be unchanged
-        previous: previousYearSales[currentMonthIndex] // should be scaled
-      });
-
       // slice off future months…
       labels = labels.slice(0, currentMonthIndex + 1);
       currentYearSales = currentYearSales.slice(0, currentMonthIndex + 1);

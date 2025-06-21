@@ -1,10 +1,11 @@
 <?php
 // DEBUG: show all errors in JSON responses
-ini_set('display_errors',           '1');
-ini_set('display_startup_errors',   '1');
-error_reporting(E_ALL);
+ini_set('display_errors','0');
+ini_set('display_startup_errors','0');
+error_reporting(0);
+
+// force JSON response
 header('Content-Type: application/json');
-// place_transfer_request.php
 
 // 1) Autoload & config
 require __DIR__ . '/vendor/autoload.php';
@@ -17,65 +18,62 @@ include 'db.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// JSON svar
-header('Content-Type: application/json');
+// 2) Auth check
+$store_manager = !empty($_SESSION['is_store_manager']);
+$admin         = !empty($_SESSION['is_admin']);
 
-// ————— 2) Auth check —————
-$store_manager = !empty($_SESSION['is_store_manager']) && $_SESSION['is_store_manager'];
-$admin         = !empty($_SESSION['is_admin']) && $_SESSION['is_admin'];
-
-if (empty($_SESSION['logged_in']) || (!$store_manager && !$admin)) {
+if (empty($_SESSION['logged_in']) || (! $store_manager && ! $admin)) {
     http_response_code(403);
-    echo json_encode([ 'success' => false, 'requests' => [] ]);
+    echo json_encode(['success'=>false,'message'=>'Adgang nægtet']);
     exit();
 }
 
-// ————— 3) Parse JSON input —————
-$raw = file_get_contents('php://input');
-$data = json_decode($raw, true);
-if ($data === null) {
-    echo json_encode(['success' => false, 'message' => 'Ugyldig JSON']);
+// 3) Parse JSON input
+$body = file_get_contents('php://input');
+$data = json_decode($body, true);
+if (!is_array($data) || empty($data['requests'])) {
+    echo json_encode(['success'=>false,'message'=>'Ingen overførselsanmodninger angivet']);
     exit();
 }
+$requests     = $data['requests'];
+$destStoreId  = $_SESSION['store_id'];
 
-// Normalize til array af anmodninger
-if (isset($data['requests']) && is_array($data['requests'])) {
-    $requests = $data['requests'];
-} elseif (isset($data['source'], $data['product'], $data['qty'])) {
-    $requests = [[
-        'source'   => $data['source'],
-        'product'  => $data['product'],
-        'quantity' => (int)$data['qty']
-    ]];
-} else {
-    echo json_encode(['success' => false, 'message' => 'Ingen overførselsanmodninger angivet']);
-    exit();
+// 4) Lookup destination store name & email
+$destQ = $conn->prepare("
+    SELECT shop_name, contact_email
+      FROM shops
+     WHERE shop_id = ?
+");
+$destQ->bind_param("s", $destStoreId);
+$destQ->execute();
+$destQ->bind_result($destStoreName, $destStoreEmail);
+$destQ->fetch();
+$destQ->close();
+
+// 5) Gather all product titles in one go
+$productIds   = array_unique(array_column($requests,'product'));
+$placeholders = implode(',', array_fill(0, count($productIds), '?'));
+$stmt         = $conn->prepare("
+    SELECT Id, title 
+      FROM items 
+     WHERE Id IN ($placeholders)
+");
+$types = str_repeat('s', count($productIds));
+$stmt->bind_param($types, ...$productIds);
+$stmt->execute();
+$res    = $stmt->get_result();
+$titles = [];
+while ($row = $res->fetch_assoc()) {
+    $titles[$row['Id']] = $row['title'];
 }
+$stmt->close();
 
-$destStore = $_SESSION['store_id'];
-
-// ————— 4) Prepare to insert —————
-$insertStmt = $conn->prepare(
-    "INSERT INTO transfer_requests 
-       (productIdentifier, source_store_id, dest_store_id, quantity)
-     VALUES (?, ?, ?, ?)"
-);
-
-// ————— 5) Hent e‐mails —————
-// 5a) Afsenderens e‐mail & navn
-$userQ = $conn->prepare("SELECT email, username FROM admin_auth WHERE id = ?");
-$userQ->bind_param("i", $_SESSION['user_id']);
-$userQ->execute();
-$userQ->bind_result($requesterEmail, $requesterName);
-$userQ->fetch();
-$userQ->close();
-
-// 5b) Cache hver kildebutiks kontakt‐e‐mail & navn
-$storeQ = $conn->prepare(
-    "SELECT contact_email, shop_name 
-       FROM shops 
-      WHERE shop_id = ?"
-);
+// 6) Cache each source‐store’s contact_email & name
+$storeQ = $conn->prepare("
+    SELECT contact_email, shop_name
+      FROM shops
+     WHERE shop_id = ?
+");
 $storeContacts = [];
 foreach ($requests as $r) {
     $src = $r['source'];
@@ -92,24 +90,29 @@ foreach ($requests as $r) {
 }
 $storeQ->close();
 
-// ————— 6) Indsæt hver anmodning —————
+// 7) Insert each request into DB
+$ins = $conn->prepare("
+    INSERT INTO transfer_requests
+      (productIdentifier, source_store_id, dest_store_id, quantity)
+    VALUES (?,?,?,?)
+");
 foreach ($requests as $r) {
-    $insertStmt->bind_param(
+    $ins->bind_param(
         "ssii",
         $r['product'],
         $r['source'],
-        $destStore,
+        $destStoreId,
         $r['quantity']
     );
-    $insertStmt->execute();
+    $ins->execute();
 }
-$insertStmt->close();
+$ins->close();
 
-// ————— 7) Mail-helper —————
-function sendMail($to, $toName, $subject, $bodyText)
-{
+// 8) PHPMailer helper
+function sendMail($to, $toName, $subject, $bodyText) {
     try {
         $mail = new PHPMailer(true);
+        $mail->CharSet    = 'UTF-8';
         $mail->isSMTP();
         $mail->Host       = SMTP_HOST;
         $mail->SMTPAuth   = true;
@@ -125,32 +128,51 @@ function sendMail($to, $toName, $subject, $bodyText)
 
         $mail->send();
     } catch (Exception $e) {
-        error_log("Mail‐fejl til {$to}: " . $mail->ErrorInfo);
+        error_log("Mail-fejl til {$to}: " . $mail->ErrorInfo);
     }
 }
 
-// ————— 8) Underret anmoder —————
-$bodyReq = "Hej {$requesterName},\n\n"
-    . "Din overførselsanmodning er modtaget og sat i kø:\n\n";
+// 9) Notify requester
+$userQ = $conn->prepare("SELECT email, username FROM admin_auth WHERE id = ?");
+$userQ->bind_param("i", $_SESSION['user_id']);
+$userQ->execute();
+$userQ->bind_result($reqEmail, $reqName);
+$userQ->fetch();
+$userQ->close();
+
+$bodyReq  = "Hej {$reqName},\n\n";
+$bodyReq .= "Din overførselsanmodning er modtaget og sat i kø:\n\n";
 foreach ($requests as $r) {
-    $bodyReq .= "- Vare {$r['product']} × {$r['quantity']} fra butik {$r['source']} til din butik {$destStore}\n";
+    $id    = $r['product'];
+    $title = $titles[$id] ?? $id;
+    $qty   = $r['quantity'];
+    $src   = $storeContacts[$r['source']]['name'] ?? $r['source'];
+    $bodyReq .= "- {$title} ({$id}) × {$qty} fra {$src} til {$destStoreName}\n";
 }
 sendMail(
-    $requesterEmail,
-    $requesterName,
+    $reqEmail,
+    $reqName,
     'Din overførselsanmodning er modtaget',
     $bodyReq
 );
 
-// ————— 9) Underret hver kildebutik —————
+// 10) Notify each source store
 foreach ($requests as $r) {
-    $src = $r['source'];
+    $src  = $r['source'];
     $info = $storeContacts[$src] ?? null;
     if (empty($info['email'])) continue;
 
-    $bodySrc = "Hej {$info['name']},\n\n"
-        . "Butik {$destStore} har anmodet om vare {$r['product']} × {$r['quantity']} fra jeres butik.\n\n"
-        . "Log venligst ind for at bekræfte afsendelse.\n";
+    $id    = $r['product'];
+    $title = $titles[$id] ?? $id;
+    $qty   = $r['quantity'];
+
+    $bodySrc  = "Hej {$info['name']},\n\n";
+    $bodySrc .= "Butik {$destStoreName} har anmodet om {$title} ({$id}) × {$qty} fra jeres butik.\n\n";
+    $bodySrc .= "Log venligst ind for at bekræfte afsendelse.\n\n";
+    $bodySrc .= "Venlig hilsen\n";
+    $bodySrc .= "{$destStoreName}\n\n";
+    $bodySrc .= "Hvis du har spørgsmål, kontakt butikken direkte på {$destStoreEmail} – svar venligst ikke på denne e-mail.";
+
     sendMail(
         $info['email'],
         $info['name'],
@@ -159,8 +181,57 @@ foreach ($requests as $r) {
     );
 }
 
-// ————— 10) Endeligt svar —————
+// 11) Notify destination store once
+if (!empty($destStoreEmail)) {
+    $bodyDest  = "Hej {$destStoreName},\n\n";
+    $bodyDest .= "Du har modtaget følgende overførselsanmodning(er):\n\n";
+    foreach ($requests as $r) {
+        $id    = $r['product'];
+        $title = $titles[$id] ?? $id;
+        $qty   = $r['quantity'];
+        $src   = $storeContacts[$r['source']]['name'] ?? $r['source'];
+        $bodyDest .= "- {$title} ({$id}) × {$qty} fra {$src}\n";
+    }
+    $bodyDest .= "\nLog ind for at bekræfte modtagelse.\n\n";
+    $bodyDest .= "Venlig hilsen\n\n{$FROM_NAME}\n"; // or use FROM_NAME
+
+    sendMail(
+        $destStoreEmail,
+        $destStoreName,
+        'Ny overførselsanmodning modtaget',
+        $bodyDest
+    );
+}
+
+// 12) Notify web admin (web@designcykler.dk)
+$webEmail = 'web@designcykler.dk';
+$webName  = 'Design Cykler Web';
+$bodyWeb  = "Der er afgivet en ny overførselsanmodning af {$reqName}:\n\n";
+foreach ($requests as $r) {
+    $id    = $r['product'];
+    $title = $titles[$id] ?? $id;
+    $qty   = $r['quantity'];
+    $src   = $storeContacts[$r['source']]['name'] ?? $r['source'];
+    $bodyWeb .= "- {$title} ({$id}) × {$qty} fra {$src} til {$destStoreName}\n";
+}
+$bodyWeb .= "\n--\nDette er en automatisk bekræftelse.";
+
+sendMail(
+    $webEmail,
+    $webName,
+    'Bekræftelse: Overførselsanmodning modtaget',
+    $bodyWeb
+);
+
+// 13) Final JSON response
 echo json_encode([
     'success' => true,
-    'message' => 'Sat i kø: ' . count($requests) . ' overførselsanmodning(er).'
+    'message' => 'Sat i kø: ' . count($requests) . ' anmodning(er).'
+]);
+
+
+// 11) Final JSON response
+echo json_encode([
+    'success' => true,
+    'message' => 'Sat i kø: ' . count($requests) . ' anmodning(er).'
 ]);
