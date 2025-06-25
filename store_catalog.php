@@ -2,7 +2,29 @@
 // store_catalog.php
 // prereqs: session started, db.php included, $is_store_manager / $is_admin set
 
+// —————————————————————————————
+// Fetch default shop tied to this user
+// —————————————————————————————
+$username      = $_SESSION['username'] ?? '';
+$defaultShopId = null;
+
+if ($username) {
+    $defStmt = $conn->prepare("
+      SELECT shop_id
+        FROM shops
+       WHERE contact_email = ?
+       LIMIT 1
+    ");
+    $defStmt->bind_param('s', $username);
+    $defStmt->execute();
+    $defStmt->bind_result($defaultShopId);
+    $defStmt->fetch();
+    $defStmt->close();
+}
+
+// —————————————————————————————
 // 1) pull dropdown data
+// —————————————————————————————
 $shopsStmt = $conn->prepare("
   SELECT shop_id, shop_name
     FROM shops
@@ -10,7 +32,7 @@ $shopsStmt = $conn->prepare("
    ORDER BY shop_name
 ");
 $shopsStmt->execute();
-$shops = $shopsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$shops  = $shopsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $shopsStmt->close();
 
 $catsStmt = $conn->prepare("
@@ -19,7 +41,7 @@ $catsStmt = $conn->prepare("
    ORDER BY display_name
 ");
 $catsStmt->execute();
-$cats = $catsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$cats   = $catsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $catsStmt->close();
 
 // now pull actors instead of brands
@@ -32,7 +54,9 @@ $actorsStmt->execute();
 $actors = $actorsStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $actorsStmt->close();
 
+// —————————————————————————————
 // 2) pull catalog rows (join actors)
+// —————————————————————————————
 $sql = "
   SELECT
     p.productIdentifier,
@@ -46,7 +70,8 @@ $sql = "
     st.stockCount,
     p.minQuantity,
     p.maxQuantity,
-    p.attributeIntValue 
+    p.attributeIntValue,
+    st.ordered AS upcomingOrderedCount
   FROM products p
   JOIN items i 
     ON p.productIdentifier = i.Id
@@ -70,10 +95,14 @@ $rows = $conn->query($sql);
         <div class="filter-row">
             <div class="filter-group">
                 <label for="storeDropdownCatalog">Vælg butik:</label>
-                <select id="storeDropdownCatalog">
-                    <option value="all">Alle butikker</option>
+                <select id="storeDropdownCatalog" <?= !empty($_SESSION['is_store_manager']) ? 'disabled' : '' ?>>
+                    <option value="all" <?= is_null($defaultShopId) ? 'selected' : '' ?>>
+                        Alle butikker
+                    </option>
                     <?php foreach ($shops as $shop): ?>
-                        <option value="<?= htmlspecialchars($shop['shop_id']) ?>">
+                        <option
+                            value="<?= htmlspecialchars($shop['shop_id']) ?>"
+                            <?= ($shop['shop_id'] == $defaultShopId) ? 'selected' : '' ?>>
                             <?= htmlspecialchars($shop['shop_name']) ?>
                         </option>
                     <?php endforeach; ?>
@@ -95,7 +124,7 @@ $rows = $conn->query($sql);
             <div class="filter-group">
                 <label for="actorDropdownCatalog">Leverandører:</label>
                 <select id="actorDropdownCatalog">
-                    <option value="all">Alle Leverandørere</option>
+                    <option value="all">Alle Leverandører</option>
                     <?php foreach ($actors as $act): ?>
                         <option value="<?= htmlspecialchars(strtolower($act['identifier_search'])) ?>">
                             <?= htmlspecialchars($act['identifier_search']) ?>
@@ -124,6 +153,7 @@ $rows = $conn->query($sql);
                 <th>Min antal</th>
                 <th>Max antal</th>
                 <th>Leverandørlager</th>
+                <th>Bestilt</th>
             </tr>
         </thead>
         <tbody id="storeCatalogBody">
@@ -136,11 +166,12 @@ $rows = $conn->query($sql);
                         data-stock-count="<?= (int) ($r['stockCount']              ?? 0) ?>"
                         data-min-quantity="<?= (int) ($r['minQuantity']            ?? 0) ?>"
                         data-attribute-int-value="<?= (int) ($r['attributeIntValue'] ?? 0) ?>"
-                        >
+                        data-upcoming-ordered="<?= (int) ($r['upcomingOrderedCount'] ?? 0) ?>">
                         <td>
                             <?php if (!empty($r['image_link'])): ?>
                                 <img
                                     src="<?= htmlspecialchars($r['image_link']) ?>"
+                                    loading="lazy"
                                     data-large="<?= htmlspecialchars($r['image_link']) ?>"
                                     alt="<?= htmlspecialchars($r['title']) ?>"
                                     class="thumbnail" />
@@ -150,19 +181,19 @@ $rows = $conn->query($sql);
                         </td>
                         <td><?= htmlspecialchars($r['productIdentifier']) ?></td>
                         <td><?= htmlspecialchars($r['title']) ?></td>
-                        <td><?= htmlspecialchars($r['actor']         ?? '—') ?></td>
-                        <td><?= htmlspecialchars($r['category']      ?? '—') ?></td>
-                        <td><?= htmlspecialchars($r['shop_name']     ?? '—') ?></td>
+                        <td><?= htmlspecialchars($r['actor']      ?? '—') ?></td>
+                        <td><?= htmlspecialchars($r['category']   ?? '—') ?></td>
+                        <td><?= htmlspecialchars($r['shop_name']  ?? '—') ?></td>
                         <td><?= (int) ($r['stockCount']   ?? 0) ?></td>
                         <td><?= (int) ($r['minQuantity']  ?? 0) ?></td>
                         <td><?= (int) ($r['maxQuantity']  ?? 0) ?></td>
-                        <td><?= (int) ($r['attributeIntValue'] ?? 0) ?></td> <!-- new -->
+                        <td><?= (int) ($r['attributeIntValue'] ?? 0) ?></td>
+                        <td><?= (int) ($r['upcomingOrderedCount'] ?? 0) ?></td>
                     </tr>
-
                 <?php endwhile; ?>
             <?php else: ?>
                 <tr>
-                    <td colspan="9" class="no-data">Ingen produkter fundet.</td>
+                    <td colspan="11" class="no-data">Ingen produkter fundet.</td>
                 </tr>
             <?php endif; ?>
         </tbody>

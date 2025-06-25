@@ -68,7 +68,7 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
 
                 <!-- Store Managers: two flat tabs -->
                 <li><a href="#store-catalog">Store Catalog</a></li>
-                <li><a href="#store-transfer"class="active">Transfer Stock</a></li>
+                <li><a href="#store-transfer" class="active">Transfer Stock</a></li>
 
             <?php else: ?>
 
@@ -469,9 +469,10 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
                 </div>
             </div>
 
-            <!-- Store Catalog & Transfer -->
             <?php if (isset($_SESSION['is_admin']) && $_SESSION['is_admin']): ?>
+                <!-- Store Catalog -->
                 <?php include 'store_catalog.php'; ?>
+                <!-- Store Transfer -->
                 <?php include 'store_transfer.php'; ?>
                 <!-- Admin Tab -->
                 <div id="admin-tab" class="tab">
@@ -517,6 +518,7 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
                     </div>
                 </div>
             <?php endif; ?>
+            <!-- Website BikeRace CMS -->
             <?php include __DIR__ . '/bikerace.php'; ?>
         <?php endif; ?>
     </div>
@@ -524,23 +526,46 @@ $is_store_manager = (bool)($_SESSION['is_store_manager'] ?? false);
     <!-- Logout -->
     <a href="logout.php" class="logout-link">Logout</a>
 
-    <!-- Scripts -->
-    <script src="js/tabs.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/admin_transfers.js"></script>
-    <script src="js/products.js"></script>
-    <script src="js/customers.js"></script>
-    <script src="js/orders.js"></script>
-    <script src="js/charts.js"></script>
-    <script src="js/product_catalog.js"></script>
-    <script src="js/detail_view.js"></script>
-    <script src="js/product_creation.js"></script>
-    <script src="js/store_traffic.js"></script>
-    <script src="js/store_catalog.js"></script>
-    <script src="js/store_catalog_sales.js"></script>
-    <script src="js/store_transfer.js"></script>
-    <script src="js/store_pickups.js"></script>
-    <script src="js/bikerace.js"></script>
+    <?php
+    // Define all your scripts
+    $allScripts = [
+        'js/tabs.js',
+        'js/admin.js',
+        'js/admin_transfers.js',
+        'js/products.js',
+        'js/customers.js',
+        'js/orders.js',
+        'js/charts.js',
+        'js/product_catalog.js',
+        'js/detail_view.js',
+        'js/product_creation.js',
+        'js/store_traffic.js',
+        'js/store_catalog.js',
+        'js/store_catalog_sales.js',
+        'js/store_transfer.js',
+        'js/store_pickups.js',
+        'js/bikerace.js',
+    ];
+
+    // If it's a store manager, only include catalog & transfer
+    if ($is_store_manager) {
+        $scriptsToLoad = [
+            'js/store_catalog.js',
+            'js/store_transfer.js',
+            'js/tabs.js',
+
+        ];
+    } else {
+        // everyone else gets everything (or filter out just the manager-only ones)
+        $scriptsToLoad = $allScripts;
+    }
+
+    // Print them out
+    foreach ($scriptsToLoad as $src) {
+        echo "<script src=\"{$src}\"></script>\n";
+    }
+    ?>
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const customRangeCheckbox = document.getElementById("customRange");

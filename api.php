@@ -46,61 +46,61 @@ if (isset($_GET['fetch_stores']) && $_GET['fetch_stores'] == 1) {
 }
 
 try {
-   // ----- Detailed View Branch: item_detail -----
-if ($interval === 'item_detail') {
-    $productId = $_GET['product_id'] ?? '';
-    if (!$productId) {
-        throw new Exception("Product ID not provided.");
-    }
-    $productIdEscaped = $conn->real_escape_string($productId);
-    $selectedYear = $conn->real_escape_string((string)$year);
-    $selectedMonth = ($month !== 'all') ? $conn->real_escape_string((string)$month) : null;
-    
-    // 1. Retrieve basic item info
-    $sqlItem = "SELECT id, title, image_link, brand, group_id 
+    // ----- Detailed View Branch: item_detail -----
+    if ($interval === 'item_detail') {
+        $productId = $_GET['product_id'] ?? '';
+        if (!$productId) {
+            throw new Exception("Product ID not provided.");
+        }
+        $productIdEscaped = $conn->real_escape_string($productId);
+        $selectedYear = $conn->real_escape_string((string)$year);
+        $selectedMonth = ($month !== 'all') ? $conn->real_escape_string((string)$month) : null;
+
+        // 1. Retrieve basic item info
+        $sqlItem = "SELECT id, title, image_link, brand, group_id 
                 FROM items 
                 WHERE (id COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
                        OR group_id COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci)
                 LIMIT 1";
-    $resultItem = $conn->query($sqlItem);
-    if (!$resultItem || $resultItem->num_rows === 0) {
-        throw new Exception("Item not found.");
-    }
-    $item = $resultItem->fetch_assoc();
+        $resultItem = $conn->query($sqlItem);
+        if (!$resultItem || $resultItem->num_rows === 0) {
+            throw new Exception("Item not found.");
+        }
+        $item = $resultItem->fetch_assoc();
 
-    // If the product is grouped, override details with the master record (where id = group_id)
-    $isGrouped = !empty($item['group_id']);
-    if ($isGrouped) {
-        $groupId = $conn->real_escape_string($item['group_id']);
-        $masterSql = "SELECT id, title, image_link, brand 
+        // If the product is grouped, override details with the master record (where id = group_id)
+        $isGrouped = !empty($item['group_id']);
+        if ($isGrouped) {
+            $groupId = $conn->real_escape_string($item['group_id']);
+            $masterSql = "SELECT id, title, image_link, brand 
                       FROM items 
                       WHERE id = '$groupId'
                       LIMIT 1";
-        $masterResult = $conn->query($masterSql);
-        if ($masterResult && $masterResult->num_rows > 0) {
-            $master = $masterResult->fetch_assoc();
-            if (!empty($master['title'])) {
-                $item['title'] = $master['title'];
-            }
-            if (!empty($master['image_link'])) {
-                $item['image_link'] = $master['image_link'];
-            }
-            if (!empty($master['brand'])) {
-                $item['brand'] = $master['brand'];
+            $masterResult = $conn->query($masterSql);
+            if ($masterResult && $masterResult->num_rows > 0) {
+                $master = $masterResult->fetch_assoc();
+                if (!empty($master['title'])) {
+                    $item['title'] = $master['title'];
+                }
+                if (!empty($master['image_link'])) {
+                    $item['image_link'] = $master['image_link'];
+                }
+                if (!empty($master['brand'])) {
+                    $item['brand'] = $master['brand'];
+                }
             }
         }
-    }
-    
-    // Build an identifier subquery for grouped products
-    $identifierSubquery = "(
+
+        // Build an identifier subquery for grouped products
+        $identifierSubquery = "(
         SELECT id FROM items WHERE group_id = '" . ($isGrouped ? $groupId : '') . "'
         UNION
         SELECT '" . ($isGrouped ? $groupId : $productIdEscaped) . "'
     )";
-    
-    // 2. Sales summary: count, total sales, unit price, and total cost.
-    if ($isGrouped) {
-        $sqlSales = "SELECT 
+
+        // 2. Sales summary: count, total sales, unit price, and total cost.
+        if ($isGrouped) {
+            $sqlSales = "SELECT 
                         COUNT(psi.id) AS count_sales,
                         SUM(psi.amount) AS total_sales,
                         MAX(psi.amount) AS unit_price,
@@ -109,8 +109,8 @@ if ($interval === 'item_detail') {
                      LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
                      WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN $identifierSubquery
                      AND YEAR(ps.completed_at) = '$selectedYear'";
-    } else {
-        $sqlSales = "SELECT 
+        } else {
+            $sqlSales = "SELECT 
                         COUNT(psi.id) AS count_sales,
                         SUM(psi.amount) AS total_sales,
                         MAX(psi.amount) AS unit_price,
@@ -119,23 +119,23 @@ if ($interval === 'item_detail') {
                      LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
                      WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
                      AND YEAR(ps.completed_at) = '$selectedYear'";
-    }
-    if ($selectedMonth) {
-        $sqlSales .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
-    }
-    $resultSales = $conn->query($sqlSales);
-    if (!$resultSales) {
-        throw new Exception("Sales query failed: " . $conn->error);
-    }
-    $sales = $resultSales->fetch_assoc();
-    $unitPrice = isset($sales['unit_price']) ? floatval($sales['unit_price']) : 0;
-    $countSales = isset($sales['count_sales']) ? intval($sales['count_sales']) : 0;
-    $sales['expected_total'] = $countSales * $unitPrice;
-    
-    // 3. Group Variations: get counts per variation.
-    $groupItems = [];
-    if ($isGrouped) {
-        $sqlGroup = "SELECT 
+        }
+        if ($selectedMonth) {
+            $sqlSales .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
+        }
+        $resultSales = $conn->query($sqlSales);
+        if (!$resultSales) {
+            throw new Exception("Sales query failed: " . $conn->error);
+        }
+        $sales = $resultSales->fetch_assoc();
+        $unitPrice = isset($sales['unit_price']) ? floatval($sales['unit_price']) : 0;
+        $countSales = isset($sales['count_sales']) ? intval($sales['count_sales']) : 0;
+        $sales['expected_total'] = $countSales * $unitPrice;
+
+        // 3. Group Variations: get counts per variation.
+        $groupItems = [];
+        if ($isGrouped) {
+            $sqlGroup = "SELECT 
                         i.id,
                         i.title,
                         i.image_link,
@@ -150,21 +150,21 @@ if ($interval === 'item_detail') {
                        ON psi.sale_id = ps.sale_id
                      WHERE i.group_id COLLATE utf8mb4_0900_ai_ci = CONVERT('$groupId' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
                        AND YEAR(ps.completed_at) = '$selectedYear'";
-        if ($selectedMonth) {
-            $sqlGroup .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
-        }
-        $sqlGroup .= " GROUP BY i.id, i.title, i.image_link";
-        $resultGroup = $conn->query($sqlGroup);
-        if ($resultGroup) {
-            while ($row = $resultGroup->fetch_assoc()) {
-                $groupItems[] = $row;
+            if ($selectedMonth) {
+                $sqlGroup .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
+            }
+            $sqlGroup .= " GROUP BY i.id, i.title, i.image_link";
+            $resultGroup = $conn->query($sqlGroup);
+            if ($resultGroup) {
+                while ($row = $resultGroup->fetch_assoc()) {
+                    $groupItems[] = $row;
+                }
             }
         }
-    }
-    
-    // 4. Shop Performance: aggregate counts per store.
-    if ($isGrouped) {
-        $sqlShops = "SELECT 
+
+        // 4. Shop Performance: aggregate counts per store.
+        if ($isGrouped) {
+            $sqlShops = "SELECT 
                         ps.shop_id,
                         (SELECT shop_name FROM shops 
                          WHERE shop_id COLLATE utf8mb4_0900_ai_ci = CONVERT(ps.shop_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
@@ -174,8 +174,8 @@ if ($interval === 'item_detail') {
                      LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
                      WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN $identifierSubquery
                      AND YEAR(ps.completed_at) = '$selectedYear'";
-    } else {
-        $sqlShops = "SELECT 
+        } else {
+            $sqlShops = "SELECT 
                         ps.shop_id,
                         (SELECT shop_name FROM shops 
                          WHERE shop_id COLLATE utf8mb4_0900_ai_ci = CONVERT(ps.shop_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
@@ -185,83 +185,83 @@ if ($interval === 'item_detail') {
                      LEFT JOIN product_sales ps ON psi.sale_id = ps.sale_id
                      WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
                      AND YEAR(ps.completed_at) = '$selectedYear'";
-    }
-    if ($selectedMonth) {
-        $sqlShops .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
-    }
-    $sqlShops .= " GROUP BY ps.shop_id ORDER BY shop_sales DESC";
-    $resultShops = $conn->query($sqlShops);
-    $shopPerformance = [];
-    if ($resultShops) {
-        while ($row = $resultShops->fetch_assoc()) {
-            $shopId = $row['shop_id'];
-            if (isset($shopPerformance[$shopId])) {
-                $shopPerformance[$shopId]['shop_sales'] += $row['shop_sales'];
+        }
+        if ($selectedMonth) {
+            $sqlShops .= " AND MONTH(ps.completed_at) = '$selectedMonth'";
+        }
+        $sqlShops .= " GROUP BY ps.shop_id ORDER BY shop_sales DESC";
+        $resultShops = $conn->query($sqlShops);
+        $shopPerformance = [];
+        if ($resultShops) {
+            while ($row = $resultShops->fetch_assoc()) {
+                $shopId = $row['shop_id'];
+                if (isset($shopPerformance[$shopId])) {
+                    $shopPerformance[$shopId]['shop_sales'] += $row['shop_sales'];
+                } else {
+                    $shopPerformance[$shopId] = $row;
+                }
+            }
+            $shopPerformance = array_values($shopPerformance);
+        }
+
+        // 5. Sales Trend data.
+        if ($selectedMonth) {
+            if ($isGrouped) {
+                $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
+                         FROM product_sales ps
+                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
+                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN $identifierSubquery
+                         AND YEAR(ps.completed_at) = '$selectedYear'
+                         AND MONTH(ps.completed_at) = '$selectedMonth'
+                         GROUP BY DAY(ps.completed_at)
+                         ORDER BY period ASC";
             } else {
-                $shopPerformance[$shopId] = $row;
+                $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
+                         FROM product_sales ps
+                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
+                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                         AND YEAR(ps.completed_at) = '$selectedYear'
+                         AND MONTH(ps.completed_at) = '$selectedMonth'
+                         GROUP BY DAY(ps.completed_at)
+                         ORDER BY period ASC";
+            }
+        } else {
+            if ($isGrouped) {
+                $sqlTrend = "SELECT MONTH(ps.completed_at) AS period, COUNT(*) AS count
+                         FROM product_sales ps
+                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
+                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN $identifierSubquery
+                         AND YEAR(ps.completed_at) = '$selectedYear'
+                         GROUP BY MONTH(ps.completed_at)
+                         ORDER BY period ASC";
+            } else {
+                $sqlTrend = "SELECT MONTH(ps.completed_at) AS period, COUNT(*) AS count
+                         FROM product_sales ps
+                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
+                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
+                         AND YEAR(ps.completed_at) = '$selectedYear'
+                         GROUP BY MONTH(ps.completed_at)
+                         ORDER BY period ASC";
             }
         }
-        $shopPerformance = array_values($shopPerformance);
-    }
-    
-    // 5. Sales Trend data.
-    if ($selectedMonth) {
-        if ($isGrouped) {
-            $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
-                         FROM product_sales ps
-                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
-                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN $identifierSubquery
-                         AND YEAR(ps.completed_at) = '$selectedYear'
-                         AND MONTH(ps.completed_at) = '$selectedMonth'
-                         GROUP BY DAY(ps.completed_at)
-                         ORDER BY period ASC";
-        } else {
-            $sqlTrend = "SELECT DAY(ps.completed_at) AS period, COUNT(*) AS count
-                         FROM product_sales ps
-                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
-                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
-                         AND YEAR(ps.completed_at) = '$selectedYear'
-                         AND MONTH(ps.completed_at) = '$selectedMonth'
-                         GROUP BY DAY(ps.completed_at)
-                         ORDER BY period ASC";
+        $resultTrend = $conn->query($sqlTrend);
+        $salesTrend = [];
+        if ($resultTrend) {
+            while ($row = $resultTrend->fetch_assoc()) {
+                $salesTrend[] = $row;
+            }
         }
-    } else {
-        if ($isGrouped) {
-            $sqlTrend = "SELECT MONTH(ps.completed_at) AS period, COUNT(*) AS count
-                         FROM product_sales ps
-                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
-                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci IN $identifierSubquery
-                         AND YEAR(ps.completed_at) = '$selectedYear'
-                         GROUP BY MONTH(ps.completed_at)
-                         ORDER BY period ASC";
-        } else {
-            $sqlTrend = "SELECT MONTH(ps.completed_at) AS period, COUNT(*) AS count
-                         FROM product_sales ps
-                         LEFT JOIN product_sales_items psi ON psi.sale_id = ps.sale_id
-                         WHERE psi.product_identifier COLLATE utf8mb4_0900_ai_ci = CONVERT('$productIdEscaped' USING utf8mb4) COLLATE utf8mb4_0900_ai_ci
-                         AND YEAR(ps.completed_at) = '$selectedYear'
-                         GROUP BY MONTH(ps.completed_at)
-                         ORDER BY period ASC";
-        }
+
+        $response = [
+            "item" => $item,
+            "sales" => $sales,
+            "group" => $groupItems,
+            "shopPerformance" => $shopPerformance,
+            "salesTrend" => $salesTrend
+        ];
+        echo json_encode($response);
+        exit();
     }
-    $resultTrend = $conn->query($sqlTrend);
-    $salesTrend = [];
-    if ($resultTrend) {
-        while ($row = $resultTrend->fetch_assoc()) {
-            $salesTrend[] = $row;
-        }
-    }
-    
-    $response = [
-        "item" => $item,
-        "sales" => $sales,
-        "group" => $groupItems,
-        "shopPerformance" => $shopPerformance,
-        "salesTrend" => $salesTrend
-    ];
-    echo json_encode($response);
-    exit();
-}
 
 
     // ==================== FETCH YEARS ====================
@@ -381,24 +381,61 @@ if ($interval === 'item_detail') {
         echo json_encode($data);
         exit();
     }
-    // ==================== YEARLY SUMMARY ====================
+    // ==================== FISCAL-YEAR SUMMARY ====================
     elseif ($interval === 'yearly_summary') {
-        $sql = "SELECT 
-                    YEAR(sd.date) AS year,
-                    SUM(sd.total_this_year) AS total_sales,
-                    SUM(sd.db_this_year) AS db_this_year
-                FROM sales_data sd";
+        // 1) build fiscal-year expression
+        $fyExpr = "CASE WHEN MONTH(sd.date) >= 10 THEN YEAR(sd.date) + 1 ELSE YEAR(sd.date) END";
+
+        // 2) make SQL: for previous FYs sum full Oct 1→Sep 30,
+        //    for the current FY sum only up through today.
+        $sql = "
+        SELECT
+          {$fyExpr} AS year,
+          SUM(
+            CASE
+              WHEN sd.date BETWEEN
+                   -- start of this record's FY:
+                   DATE(CONCAT( ({$fyExpr} - 1), '-10-01'))
+                   AND
+                   -- end of this record's FY, but capped at today:
+                   LEAST(CURDATE(), DATE(CONCAT({$fyExpr}, '-09-30')))
+              THEN sd.total_this_year
+              ELSE 0
+            END
+          ) AS total_sales,
+          SUM(
+            CASE
+              WHEN sd.date BETWEEN
+                   DATE(CONCAT( ({$fyExpr} - 1), '-10-01'))
+                   AND
+                   LEAST(CURDATE(), DATE(CONCAT({$fyExpr}, '-09-30')))
+              THEN sd.db_this_year
+              ELSE 0
+            END
+          ) AS db_this_year
+        FROM sales_data sd
+        ";
+
+        // 3) re-apply your store filters exactly as before
         if ($storeId === 'excludeOnline') {
-            $sql .= " WHERE sd.shop_id != '" . $conn->real_escape_string((string)$excludedShopId) . "'";
+            $esc = $conn->real_escape_string((string)$excludedShopId);
+            $sql .= " WHERE sd.shop_id != '{$esc}'";
         } elseif ($storeId !== 'all') {
-            $sql .= " WHERE sd.shop_id = '" . $conn->real_escape_string((string)$storeId) . "'";
+            $esc = $conn->real_escape_string((string)$storeId);
+            $sql .= " WHERE sd.shop_id = '{$esc}'";
         }
-        $sql .= " GROUP BY YEAR(sd.date)
-                  ORDER BY YEAR(sd.date) ASC";
+
+        // 4) group & order by the fiscal-year expression
+        $sql .= "
+        GROUP BY {$fyExpr}
+        ORDER BY {$fyExpr} ASC
+        ";
+
         $result = $conn->query($sql);
         if (!$result) {
             throw new Exception("Database query failed (yearly_summary): " . $conn->error);
         }
+
         $data = [];
         while ($row = $result->fetch_assoc()) {
             $data[] = $row;
@@ -406,6 +443,7 @@ if ($interval === 'item_detail') {
         echo json_encode($data);
         exit();
     }
+
     // ==================== CUSTOM RANGE ====================
     elseif ($interval === 'custom_range') {
         if (!isset($_GET['start']) || !isset($_GET['end'])) {
@@ -528,70 +566,70 @@ if ($interval === 'item_detail') {
         echo json_encode($data);
         exit();
     }
-// ==================== PRODUCT CATALOG (with pagination) ====================
-elseif ($interval === 'product_catalog') {
-    // Enable debugging if debug=1 is passed as a parameter.
-    $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
+    // ==================== PRODUCT CATALOG (with pagination) ====================
+    elseif ($interval === 'product_catalog') {
+        // Enable debugging if debug=1 is passed as a parameter.
+        $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
 
-    $search   = $_GET['search'] ?? '';
-    $category = $_GET['category'] ?? 'all';
-    $brand    = $_GET['brand'] ?? 'all';
-    $storeId  = $_GET['store_id'] ?? 'all';
-    $year     = $_GET['year'] ?? '';
-    $month    = $_GET['month'] ?? 'all';
+        $search   = $_GET['search'] ?? '';
+        $category = $_GET['category'] ?? 'all';
+        $brand    = $_GET['brand'] ?? 'all';
+        $storeId  = $_GET['store_id'] ?? 'all';
+        $year     = $_GET['year'] ?? '';
+        $month    = $_GET['month'] ?? 'all';
 
-    $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-    $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
-    if ($page < 1) {
-        $page = 1;
-    }
-    if ($pageSize < 1) {
-        $pageSize = 20;
-    }
-    $offset   = ($page - 1) * $pageSize;
+        $page     = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $pageSize = isset($_GET['page_size']) ? (int)$_GET['page_size'] : 20;
+        if ($page < 1) {
+            $page = 1;
+        }
+        if ($pageSize < 1) {
+            $pageSize = 20;
+        }
+        $offset   = ($page - 1) * $pageSize;
 
-    $searchEscaped   = $conn->real_escape_string($search);
-    $categoryEscaped = $conn->real_escape_string($category);
-    $brandEscaped    = $conn->real_escape_string($brand);
-    $yearEscaped     = $conn->real_escape_string($year);
-    $monthEscaped    = $conn->real_escape_string($month);
+        $searchEscaped   = $conn->real_escape_string($search);
+        $categoryEscaped = $conn->real_escape_string($category);
+        $brandEscaped    = $conn->real_escape_string($brand);
+        $yearEscaped     = $conn->real_escape_string($year);
+        $monthEscaped    = $conn->real_escape_string($month);
 
-    $storeCondition = "";
-    if ($storeId === 'excludeOnline') {
-        $storeCondition = " AND (ps.shop_id != '" . $conn->real_escape_string($excludedShopId) . "' OR ps.shop_id IS NULL) ";
-    } elseif ($storeId !== 'all') {
-        $storeCondition = " AND (ps.shop_id = '" . $conn->real_escape_string($storeId) . "' OR ps.shop_id IS NULL) ";
-    }
+        $storeCondition = "";
+        if ($storeId === 'excludeOnline') {
+            $storeCondition = " AND (ps.shop_id != '" . $conn->real_escape_string($excludedShopId) . "' OR ps.shop_id IS NULL) ";
+        } elseif ($storeId !== 'all') {
+            $storeCondition = " AND (ps.shop_id = '" . $conn->real_escape_string($storeId) . "' OR ps.shop_id IS NULL) ";
+        }
 
-    $yearCondition = "";
-    if (!empty($year)) {
-        $yearCondition = " AND (YEAR(ps.completed_at) = '$yearEscaped' OR ps.completed_at IS NULL) ";
-    }
+        $yearCondition = "";
+        if (!empty($year)) {
+            $yearCondition = " AND (YEAR(ps.completed_at) = '$yearEscaped' OR ps.completed_at IS NULL) ";
+        }
 
-    $monthCondition = "";
-    if ($month !== 'all') {
-        $monthCondition = " AND (MONTH(ps.completed_at) = '$monthEscaped' OR ps.completed_at IS NULL) ";
-    }
+        $monthCondition = "";
+        if ($month !== 'all') {
+            $monthCondition = " AND (MONTH(ps.completed_at) = '$monthEscaped' OR ps.completed_at IS NULL) ";
+        }
 
-    $searchCondition = "";
-    if (!empty($search)) {
-        $searchCondition = " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%') ";
-    }
+        $searchCondition = "";
+        if (!empty($search)) {
+            $searchCondition = " AND (i.id LIKE '%$searchEscaped%' OR i.title LIKE '%$searchEscaped%') ";
+        }
 
-    $categoryCondition = "";
-    if ($category !== 'all') {
-        $categoryCondition = " AND (psi.product_category_identifier = '$categoryEscaped' OR psi.product_category_identifier IS NULL) ";
-    }
+        $categoryCondition = "";
+        if ($category !== 'all') {
+            $categoryCondition = " AND (psi.product_category_identifier = '$categoryEscaped' OR psi.product_category_identifier IS NULL) ";
+        }
 
-    $brandCondition = "";
-    if ($brand !== 'all') {
-        $brandCondition = " AND i.brand = '$brandEscaped' ";
-    }
+        $brandCondition = "";
+        if ($brand !== 'all') {
+            $brandCondition = " AND i.brand = '$brandEscaped' ";
+        }
 
-    /*
+        /*
       Branch 1: Standalone Items (items without a group_id)
     */
-    $standaloneSQL = "
+        $standaloneSQL = "
       SELECT 
           i.id AS id,
           i.image_link AS image_link,
@@ -615,11 +653,11 @@ elseif ($interval === 'product_catalog') {
       GROUP BY i.id
     ";
 
-    /*
+        /*
       Branch 2: Grouped Items (items with a group_id)
       We aggregate sales from two joins and then join with a representative query.
     */
-    $groupedDerived = "
+        $groupedDerived = "
       SELECT product_group, SUM(total_sales) AS total_sales, SUM(count_sales) AS count_sales, SUM(total_cost) AS total_cost
       FROM (
           SELECT 
@@ -663,10 +701,10 @@ elseif ($interval === 'product_catalog') {
       GROUP BY product_group
     ";
 
-    // Updated representative query:
-    // This query joins a distinct set of group_ids to a master record (if one exists, where id = group_id)
-    // and a fallback record from variations.
-    $repSQL = "
+        // Updated representative query:
+        // This query joins a distinct set of group_ids to a master record (if one exists, where id = group_id)
+        // and a fallback record from variations.
+        $repSQL = "
       SELECT 
           g.group_id,
           COALESCE(m.image_link, v.image_link, 'img/placeholder.jpg') AS image_link,
@@ -689,7 +727,7 @@ elseif ($interval === 'product_catalog') {
       ) v ON v.group_id = g.group_id
     ";
 
-    $groupedSQL = "
+        $groupedSQL = "
       SELECT 
           grp.product_group AS id,
           rep.image_link AS image_link,
@@ -706,7 +744,7 @@ elseif ($interval === 'product_catalog') {
       ) rep ON rep.group_id = grp.product_group
     ";
 
-    $sql = "
+        $sql = "
       ($standaloneSQL)
       UNION ALL
       ($groupedSQL)
@@ -714,34 +752,34 @@ elseif ($interval === 'product_catalog') {
       LIMIT $pageSize OFFSET $offset
     ";
 
-    if ($debug) {
-        error_log("DEBUG - Product Catalog UNION SQL Query: " . $sql);
-    }
-
-    $result = $conn->query($sql);
-    if (!$result) {
-        $errorMsg = "Database query failed (product_catalog): " . $conn->error;
         if ($debug) {
-            error_log("DEBUG - SQL Error: " . $conn->error);
-            header('Content-Type: application/json');
-            echo json_encode([
-                "error"     => "SQL Error",
-                "sql_error" => $conn->error,
-                "sql_query" => $sql
-            ]);
-            exit();
+            error_log("DEBUG - Product Catalog UNION SQL Query: " . $sql);
         }
-        throw new Exception($errorMsg);
-    }
 
-    $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
+        $result = $conn->query($sql);
+        if (!$result) {
+            $errorMsg = "Database query failed (product_catalog): " . $conn->error;
+            if ($debug) {
+                error_log("DEBUG - SQL Error: " . $conn->error);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    "error"     => "SQL Error",
+                    "sql_error" => $conn->error,
+                    "sql_query" => $sql
+                ]);
+                exit();
+            }
+            throw new Exception($errorMsg);
+        }
+
+        $data = [];
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit();
     }
-    header('Content-Type: application/json');
-    echo json_encode($data);
-    exit();
-}
 
 
 

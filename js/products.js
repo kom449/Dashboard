@@ -26,7 +26,7 @@ function fetchAllProducts() {
                                     <td>${product.group_id ? product.group_id : 'N/A'}</td>
                                     <td>
                                         ${product.image_link 
-                                            ? `<img src="${product.image_link}" alt="${product.name}" width="50" height="50" class="product-image" style="cursor:pointer;">` 
+                                            ? `<img src="${product.image_link}" loading="lazy" alt="${product.name}" width="50" height="50" class="product-image" style="cursor:pointer;">` 
                                             : 'No Image'}
                                     </td>
                                 </tr>
@@ -87,4 +87,4 @@ function fetchAllProducts() {
         });
 }
 
-fetchAllProducts();
+window.fetchAllProducts = fetchAllProducts;

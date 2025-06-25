@@ -4,15 +4,22 @@ session_start();
 include 'cors.php';
 include 'db.php';
 
-$store_manager = !empty($_SESSION['is_store_manager']) && $_SESSION['is_store_manager'];
-$admin         = !empty($_SESSION['is_admin'])         && $_SESSION['is_admin'];
+// session flags
+$store_manager = !empty($_SESSION['is_store_manager']);
+$admin         = !empty($_SESSION['is_admin']);
+$is_web_user   = !empty($_SESSION['email'])
+  && $_SESSION['email'] === 'web@designcykler.dk';
 
-if (empty($_SESSION['logged_in']) || (! $store_manager && ! $admin)) {
+// only store‐manager, admin or our special web user
+if (
+  empty($_SESSION['logged_in'])
+  || (! $store_manager && ! $admin && ! $is_web_user)
+) {
   echo "<p>Adgang nægtet.</p>";
   exit();
 }
 
-// Fetch shops (exclude online)
+// fetch all physical shops (exclude online shop)
 $stmt = $conn->prepare("
   SELECT shop_id, shop_name
     FROM shops
@@ -23,14 +30,16 @@ $stmt->execute();
 $allShops = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Source shops for managers (exclude their own); admins get all
-$currentStore = $_SESSION['store_id'] ?? '';
-$sourceShops  = $store_manager
-  ? array_filter($allShops, fn($s) => $s['shop_id'] != $currentStore)
-  : $allShops;
+// managers without admin/web can only ship *from* their own store
+$currentStore      = $_SESSION['store_id'] ?? '';
+$can_pick_any_src  = $admin || $is_web_user;
+$sourceShops       = $can_pick_any_src
+  ? $allShops
+  : array_filter($allShops, fn($s) => $s['shop_id'] != $currentStore);
 
-// Destination shops for admins; unused by managers
-$destShops    = $allShops;
+// only admin/web see the “to” column
+$showDestSelect = $admin || $is_web_user;
+$destShops      = $allShops;
 ?>
 
 <div id="store-transfer" class="tab" style="display:none;">
@@ -43,7 +52,7 @@ $destShops    = $allShops;
         <thead>
           <tr>
             <th>Fra Butik</th>
-            <?php if ($admin): ?><th>Til Butik</th><?php endif; ?>
+            <?php if ($showDestSelect): ?><th>Til Butik</th><?php endif; ?>
             <th>Vare-ID</th>
             <th>Produkt</th>
             <th>Antal</th>
@@ -64,8 +73,8 @@ $destShops    = $allShops;
               </select>
             </td>
 
-            <!-- DESTINATION (admins only) -->
-            <?php if ($admin): ?>
+            <!-- DESTINATION (admin + web user) -->
+            <?php if ($showDestSelect): ?>
               <td>
                 <select class="destStoreSelect" required>
                   <option value="">Vælg destination</option>
@@ -86,8 +95,8 @@ $destShops    = $allShops;
                 placeholder="Indtast præcis Vare-ID"
                 disabled
                 required
-                pattern="\d+"
-                title="Kun tal – indtast det nøjagtige Vare-ID" />
+                pattern="[A-Za-z0-9]+"
+                title="Tal og bogstaver – indtast det nøjagtige Vare-ID" />
             </td>
             <td>
               <input
@@ -126,3 +135,8 @@ $destShops    = $allShops;
     <div id="inboundGrid" class="catalog-grid"></div>
   </section>
 </div>
+
+<script>
+  window.currentUserEmail = <?= json_encode($_SESSION['email'] ?? '') ?>;
+</script>
+<script src="js/store_transfer.js"></script>

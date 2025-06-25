@@ -2,6 +2,11 @@
 
 let isAllProductsLoaded = false;
 let isBikeraceLoaded = false;
+let isAdminLoaded = false;
+let currentPage = 1;
+let loading = false;
+let allLoaded = false;
+const pageSize = 50;
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1) Only real tab‐links: href="#some-id" but NOT dropbtn roots
@@ -76,13 +81,32 @@ document.addEventListener("DOMContentLoaded", () => {
                     // …initProductCreationForm() etc…
                     break;
                 case "product-catalog":
-                    resetCatalog();
-                    document.getElementById("catalogGrid").innerHTML = "";
-                    fetchCatalog(currentPage);
-                    setTimeout(() => {
-                        initIntersectionObserver();
-                        initScrollListener();
-                    }, 200);
+                    // only load the external file once
+                    if (!window.productCatalogLoaded) {
+                        const script = document.createElement("script");
+                        script.src = "js/product_catalog.js";
+                        script.onload = () => {
+                            // once it's loaded, run your init logic
+                            resetCatalog();
+                            document.getElementById("catalogGrid").innerHTML = "";
+                            fetchCatalog(currentPage);
+                            setTimeout(() => {
+                                initIntersectionObserver();
+                                initScrollListener();
+                            }, 200);
+                        };
+                        document.body.appendChild(script);
+                        window.productCatalogLoaded = true;
+                    } else {
+                        // already loaded, just re-init
+                        resetCatalog();
+                        document.getElementById("catalogGrid").innerHTML = "";
+                        fetchCatalog(currentPage);
+                        setTimeout(() => {
+                            initIntersectionObserver();
+                            initScrollListener();
+                        }, 200);
+                    }
                     break;
                 case "store-catalog":
                     typeof window.initStoreCatalogTab === "function"
@@ -126,7 +150,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         console.error("Did you include js/bikerace.js?");
                     break;
                 case "admin-tab":
-                    setupAdminTab();
+                    if (!isAdminLoaded && typeof window.initAdminTab === "function") {
+                        window.initAdminTab();
+                        isAdminLoaded = true;
+                    }
                     break;
                 default:
                     break;

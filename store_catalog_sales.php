@@ -69,28 +69,3 @@ $years = range($currentYear, $currentYear - 5);
   </div>
 </div>
 
-<style>
-  .sales-grid-table {
-    border-collapse: collapse;
-    width: 100%;
-    table-layout: fixed;
-    font-size: 0.85em;
-  }
-
-  .sales-grid-table th,
-  .sales-grid-table td {
-    border: 1px solid #ddd;
-    padding: 4px;
-    text-align: center;
-    white-space: normal;
-    word-wrap: break-word;
-    word-break: break-word;
-  }
-
-  .sales-grid-table th {
-    background-color: #f4f4f4;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-</style>

@@ -1,58 +1,184 @@
 [
     {
-        "date": "01.02.25",
-        "race": "POWERCUP",
-        "link": "https://fynrundt.dk/2025",
-        "city": "NR. LYNDELSE",
+        "date": "28.06.25",
+        "race": "DGI Hærvejsløbet | L'étape Denmark",
+        "link": "https:\/\/denmark.letapeseries.com\/",
+        "city": "Midtjylland",
+        "type": "Landevej"
+    },
+    {
+        "date": "06.07.25",
+        "race": "Spar Nord løbet | Mors Rundt",
+        "link": "https:\/\/www.sportstiming.dk\/event\/15276",
+        "city": "Nordjylland",
+        "type": "Blandet"
+    },
+    {
+        "date": "10.07.25",
+        "race": "Skanseløbet",
+        "link": "https:\/\/www.halscykelmotion.dk\/skanseloebet\/",
+        "city": "Nordjylland",
+        "type": "Landevej"
+    },
+    {
+        "date": "18.07.25",
+        "race": "Folkeløbet Lolland Rundt",
+        "link": "https:\/\/lollandrundt.dk\/",
+        "city": "Sjælland",
+        "type": "Landevej"
+    },
+    {
+        "date": "03.08.25",
+        "race": "Falster Rundt",
+        "link": "https:\/\/sundruten.dk\/",
+        "city": "Sjælland",
+        "type": "Landevej"
+    },
+    {
+        "date": "07.08.25",
+        "race": "Sportsugeløbet",
+        "link": "",
+        "city": "Midtjylland",
+        "type": "Landevej"
+    },
+    {
+        "date": "14.08.25",
+        "race": "Club La Santa MTB Cup 6",
+        "link": "http:\/\/mountainbikecup.dk\/",
+        "city": "Syddanmark",
         "type": "MTB"
     },
     {
-        "date": "22.02.25",
-        "race": "POWERCUP",
-        "link": "https://fynrundt.dk/2025",
-        "city": "SVENDBORG",
+        "date": "24.08.25",
+        "race": "Varde Classic",
+        "link": "http:\/\/vardeclassic.dk\/",
+        "city": "Syddanmark",
+        "type": "Landevej"
+    },
+    {
+        "date": "24.08.25",
+        "race": "Bornholm Rundt på Cykel",
+        "link": "http:\/\/cykelbornholmrundt.dk\/",
+        "city": "Hovedstaden",
+        "type": "Landevej"
+    },
+    {
+        "date": "26.08.25",
+        "race": "Lions Tour Holstebro",
+        "link": "https:\/\/holstebroevents.dk\/event\/lions-tour-holstebro\/",
+        "city": "Midtjylland",
+        "type": "Landevej"
+    },
+    {
+        "date": "28.08.25",
+        "race": "Club La Santa MTB Cup 7",
+        "link": "http:\/\/mountainbikecup.dk\/",
+        "city": "Syddanmark",
         "type": "MTB"
     },
     {
-        "date": "01.03.25",
-        "race": "MELFAR MTB",
-        "link": "https://fynrundt.dk/2025",
-        "city": "MIDDELFART",
-        "type": "MTB"
+        "date": "30.08.25",
+        "race": "Aarhus Motionscykelløb",
+        "link": "https:\/\/www.sportstiming.dk\/event\/14991",
+        "city": "Midtjylland",
+        "type": "Landevej"
     },
     {
-        "date": "08.03.25",
-        "race": "POWERCUP",
-        "link": "https://fynrundt.dk/2025",
-        "city": "NYBORG",
-        "type": "MTB"
+        "date": "30.08.25",
+        "race": "Markedsløbet 2025",
+        "link": "http:\/\/www.bmc92.dk\/",
+        "city": "Nordjylland",
+        "type": "Landevej"
     },
     {
-        "date": "05.04.25",
-        "race": "POWERCUP",
-        "link": "https://fynrundt.dk/2025",
-        "city": "HÅRBY",
-        "type": "MTB"
-    },
-    {
-        "date": "04.05.25",
-        "race": "FYEN RUNDT",
-        "link": "https://fynrundt.dk/2025",
-        "city": "MIDDELFART",
-        "type": "LANDEVEJ"
+        "date": "30.08.25",
+        "race": "Vestjyllands Smukkeste Cykelløb",
+        "link": "http:\/\/www.smukcykel.dk\/",
+        "city": "Midtjylland",
+        "type": "Landevej"
     },
     {
         "date": "31.08.25",
-        "race": "LANGELAND RUNDT",
-        "link": "https://fynrundt.dk/2025",
-        "city": "HUMBLE",
-        "type": "GRAVEL"
+        "race": "Møn Rundt",
+        "link": "https:\/\/www.sportstiming.dk\/event\/13131",
+        "city": "Sjælland",
+        "type": "Landevej"
+    },
+    {
+        "date": "04.09.25",
+        "race": "Club La Santa MTB Cup 8",
+        "link": "http:\/\/mountainbikecup.dk\/",
+        "city": "Syddanmark",
+        "type": "MTB"
+    },
+    {
+        "date": "06.09.25",
+        "race": "Club La Santa Kids MTB",
+        "link": "http:\/\/www.kidsmtbcup.dk\/",
+        "city": "Syddanmark",
+        "type": "MTB"
+    },
+    {
+        "date": "07.09.25",
+        "race": "Team Change Løbet",
+        "link": "https:\/\/www.sportstiming.dk\/event\/15411",
+        "city": "Hovedstaden",
+        "type": "Landevej"
+    },
+    {
+        "date": "14.09.25",
+        "race": "Motionscykelløbet Bast",
+        "link": "https:\/\/bsr.dk\/",
+        "city": "Hovedstaden",
+        "type": "Landevej"
+    },
+    {
+        "date": "20.09.25",
+        "race": "Herningløbet",
+        "link": "http:\/\/www.herningloebet.dk\/",
+        "city": "Midtjylland",
+        "type": "Landevej"
     },
     {
         "date": "21.09.25",
-        "race": "CARL NIELSEN TOUREN",
-        "link": "https://fynrundt.dk/2025",
-        "city": "NR. LYNDELSE",
-        "type": "LANDEVEJ"
+        "race": "Carl Nielsen Touren",
+        "link": "https:\/\/cc-kaeden.dk\/carl-nielsen-tour\/",
+        "city": "Syddanmark",
+        "type": "Landevej"
+    },
+    {
+        "date": "21.09.25",
+        "race": "Høstløbet",
+        "link": "https:\/\/roskildecykelmotion.dk\/page\/hoest",
+        "city": "Sjælland",
+        "type": "Gravel"
+    },
+    {
+        "date": "05.10.25",
+        "race": "MTB Marathon",
+        "link": "http:\/\/www.mtbmaraton.dk\/",
+        "city": "Hovedstaden",
+        "type": "MTB"
+    },
+    {
+        "date": "05.10.25",
+        "race": "Gravel Challenge",
+        "link": "http:\/\/www.mtbmaraton.dk\/",
+        "city": "Hovedstaden",
+        "type": "Gravel"
+    },
+    {
+        "date": "19.10.25",
+        "race": "SparNebel MTB\/Gravel Race",
+        "link": "http:\/\/www.mountainbikerace.dk\/",
+        "city": "Syddanmark",
+        "type": "MTB\/Gravel"
+    },
+    {
+        "date": "19.10.25",
+        "race": "Konggaard Alpetramp Classic ",
+        "link": "https:\/\/broby-if.dk\/hold-alpetramp\/",
+        "city": "Syddanmark",
+        "type": "Landevej"
     }
 ]

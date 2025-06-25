@@ -165,39 +165,47 @@ function fetchLastUpdate() {
     });
 }
 
-// 3) Immediately initialize (script is loaded at the bottom of the page)
-setupAdminTab();
-fetchLastUpdate();
+// 3) One‐time initializer for the Admin tab
+function initAdminTab() {
+  // a) render user table & actions
+  setupAdminTab();
 
-// Attach the create-user handler directly (no more silent misses)
-const form = document.getElementById("createUserForm");
-if (!form) {
-  console.error("createUserForm not found – check your index.php markup");
-} else {
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    const u = document.getElementById("username").value.trim();
-    const p = document.getElementById("password").value.trim();
-    if (!u || !p) return alert("Both fields are required.");
+  // b) fetch & display last‐update timestamp
+  fetchLastUpdate();
 
-    fetch("create_user.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "create_user", username: u, password: p })
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          alert("User created.");
-          form.reset();
-          setupAdminTab();
-        } else {
-          alert(`Error: ${d.message}`);
-        }
+  // c) wire up the create‐user form
+  const form = document.getElementById("createUserForm");
+  if (!form) {
+    console.error("createUserForm not found – check your index.php markup");
+  } else {
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const u = document.getElementById("username").value.trim();
+      const p = document.getElementById("password").value.trim();
+      if (!u || !p) return alert("Both fields are required.");
+
+      fetch("create_user.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_user", username: u, password: p })
       })
-      .catch(err => {
-        console.error(err);
-        alert("Error creating user.");
-      });
-  });
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            alert("User created.");
+            form.reset();
+            setupAdminTab();
+          } else {
+            alert(`Error: ${d.message}`);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Error creating user.");
+        });
+    });
+  }
 }
+
+// expose initializer for tabs.js
+window.initAdminTab = initAdminTab;
